@@ -43,8 +43,19 @@ export interface OrderResponse {
   items: OrderItemResponse[];
 }
 
-/** Body del checkout (POST /api/orders/checkout). El total no viene del cliente. */
+/** Línea solicitada en el checkout: sólo producto + cantidad. El precio lo pone el catálogo (Feign). */
+export interface CheckoutItem {
+  productId: number;
+  quantity: number;
+}
+
+/**
+ * Body del checkout (POST /api/orders/checkout). El total no viene del cliente.
+ * A diferencia del monolito (que leía el carrito server-side), pedidos-service recibe
+ * las líneas y las REPRECIA vía Feign al catálogo — el cliente no puede falsear el precio.
+ */
 export interface CheckoutRequest {
+  items: CheckoutItem[];
   documentType: DocumentType;
   customerName: string;
   customerDoc: string;

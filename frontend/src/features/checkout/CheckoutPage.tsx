@@ -19,7 +19,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
  */
 export function CheckoutPage() {
   const { isAuthenticated } = useAuth();
-  const { cart, refresh } = useCart();
+  const { cart, clear } = useCart();
   const navigate = useNavigate();
 
   const [documentType, setDocumentType] = useState<DocumentType>('BOLETA');
@@ -68,8 +68,11 @@ export function CheckoutPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const order = await checkout({ documentType, customerName: customerName.trim(), customerDoc });
-      await refresh(); // el carrito quedó vacío en el backend
+      // pedidos-service repreciar estas líneas vía Feign; el cliente sólo manda producto + cantidad.
+      const items = cart.items.map((it) => ({ productId: it.productId, quantity: it.quantity }));
+      const order = await checkout({ items, documentType, customerName: customerName.trim(), customerDoc });
+      // El micro (Mongo) NO toca el carrito del monolito → lo vaciamos acá explícitamente.
+      await clear().catch(() => {});
       navigate(`/pedidos/${order.id}`);
     } catch {
       setError('No se pudo completar el pedido. Revisá el stock disponible y los datos del comprobante.');

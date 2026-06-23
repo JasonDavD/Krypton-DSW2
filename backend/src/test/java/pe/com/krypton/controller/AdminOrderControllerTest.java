@@ -1,6 +1,7 @@
 package pe.com.krypton.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -8,8 +9,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import feign.FeignException;
+import feign.Request;
+import feign.RequestTemplate;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,16 +29,15 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import pe.com.krypton.dto.response.OrderResponse;
 import pe.com.krypton.dto.response.PageResponse;
-import pe.com.krypton.exception.OrderStatusTransitionException;
-import pe.com.krypton.exception.ResourceNotFoundException;
 import pe.com.krypton.security.JwtAuthenticationFilter;
-import pe.com.krypton.service.OrderService;
+import pe.com.krypton.service.AdminOrderService;
 
 /**
  * Web slice for AdminOrderController.
  * SecurityContext disabled via addFilters=false + JwtAuthenticationFilter exclusion.
- * OrderService mocked. Role assigned via @WithMockUser(roles = "ADMIN").
- * Covers HTTP contract: status codes, JSON shape, validation.
+ * AdminOrderService mocked (respaldado por Feign en producción). Role via @WithMockUser.
+ * Cubre el contrato HTTP: status codes, JSON shape, validación, y propagación de los
+ * errores de pedidos-service (404/422 que llegan como FeignException → mismo status).
  * Satisfies REQ-OM-10..REQ-OM-13.
  */
 @WebMvcTest(controllers = AdminOrderController.class,
@@ -43,7 +48,7 @@ import pe.com.krypton.service.OrderService;
 class AdminOrderControllerTest {
 
     @Autowired MockMvc mvc;
-    @MockBean OrderService orderService;
+    @MockBean AdminOrderService adminOrderService;
 
     private static final String JSON = MediaType.APPLICATION_JSON_VALUE;
 
@@ -55,18 +60,32 @@ class AdminOrderControllerTest {
     }
 
     private PageResponse<OrderResponse> singlePage(OrderResponse order) {
-        return new PageResponse<>(List.of(order), 0, 10, 1L, 1);
+        return new PageResponse<>(List.of(order), 0, 20, 1L, 1);
+    }
+
+    /** Construye una FeignException con el status que devolvería pedidos. */
+    private FeignException feignWithStatus(int status, String body) {
+        Request req = Request.create(Request.HttpMethod.GET, "http://PEDIDOS/api/orders/admin",
+                Collections.emptyMap(), null, StandardCharsets.UTF_8, new RequestTemplate());
+        return FeignException.errorStatus("PedidosClient",
+                feign.Response.builder()
+                        .status(status)
+                        .reason("from pedidos")
+                        .request(req)
+                        .headers(Collections.emptyMap())
+                        .body(body, StandardCharsets.UTF_8)
+                        .build());
     }
 
     // ─── GET /api/admin/orders ───────────────────────────────────────────────────
 
     @Test
     @WithMockUser(roles = "ADMIN")
-    void get_all_orders_returns_200_page_response() throws Exception {
-        when(orderService.getAllOrders(any(), any(), any(), any()))
+    void should_return_200_page_when_get_all_orders() throws Exception {
+        when(adminOrderService.getAllOrders(any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(singlePage(sampleOrder(1L, "PENDIENTE")));
 
-        mvc.perform(get("/api/admin/orders").param("page", "0").param("size", "10"))
+        mvc.perform(get("/api/admin/orders").param("page", "0").param("size", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.content.length()").value(1))
@@ -78,8 +97,8 @@ class AdminOrderControllerTest {
 
     @Test
     @WithMockUser(roles = "ADMIN")
-    void get_admin_order_returns_200_with_detail() throws Exception {
-        when(orderService.getOrder(10L)).thenReturn(sampleOrder(10L, "PENDIENTE"));
+    void should_return_200_with_detail_when_get_admin_order() throws Exception {
+        when(adminOrderService.getOrder(10L)).thenReturn(sampleOrder(10L, "PENDIENTE"));
 
         mvc.perform(get("/api/admin/orders/10"))
                 .andExpect(status().isOk())
@@ -88,9 +107,10 @@ class AdminOrderControllerTest {
 
     @Test
     @WithMockUser(roles = "ADMIN")
-    void get_admin_order_not_found_returns_404() throws Exception {
-        when(orderService.getOrder(999L))
-                .thenThrow(new ResourceNotFoundException("Orden no encontrada: 999"));
+    void should_propagate_404_when_pedidos_not_found() throws Exception {
+        // pedidos devuelve 404 → Feign lanza FeignException(404) → el handler re-emite 404.
+        when(adminOrderService.getOrder(999L))
+                .thenThrow(feignWithStatus(404, "{\"status\":404,\"error\":\"Orden no encontrada: 999\"}"));
 
         mvc.perform(get("/api/admin/orders/999"))
                 .andExpect(status().isNotFound());
@@ -100,8 +120,8 @@ class AdminOrderControllerTest {
 
     @Test
     @WithMockUser(roles = "ADMIN")
-    void put_status_returns_200_with_updated_order() throws Exception {
-        when(orderService.updateStatus(eq(2L), any()))
+    void should_return_200_with_updated_order_when_put_status() throws Exception {
+        when(adminOrderService.updateStatus(eq(2L), any()))
                 .thenReturn(sampleOrder(2L, "CANCELADA"));
 
         mvc.perform(put("/api/admin/orders/2/status").contentType(JSON)
@@ -112,13 +132,12 @@ class AdminOrderControllerTest {
 
     @Test
     @WithMockUser(roles = "ADMIN")
-    void put_status_illegal_transition_returns_422() throws Exception {
-        // Contrato de capa web: una transición ilegal (CANCELADA → CONFIRMADA) que el
-        // service rechaza con OrderStatusTransitionException debe salir como 422,
-        // gracias al mapeo del GlobalExceptionHandler (@RestControllerAdvice).
-        when(orderService.updateStatus(eq(2L), any()))
-                .thenThrow(new OrderStatusTransitionException(
-                        "Transición de estado inválida: CANCELADA → CONFIRMADA"));
+    void should_propagate_422_when_pedidos_rejects_illegal_transition() throws Exception {
+        // La validación de la transición es de pedidos: rechaza con 422 → FeignException(422)
+        // → el handler la re-emite como 422, sin enmascararla con un 500.
+        when(adminOrderService.updateStatus(eq(2L), any()))
+                .thenThrow(feignWithStatus(422,
+                        "{\"status\":422,\"error\":\"Transición inválida: CANCELADA → CONFIRMADA\"}"));
 
         mvc.perform(put("/api/admin/orders/2/status").contentType(JSON)
                         .content("{\"status\":\"CONFIRMADA\"}"))
@@ -127,9 +146,9 @@ class AdminOrderControllerTest {
 
     @Test
     @WithMockUser(roles = "ADMIN")
-    void put_status_missing_field_returns_400() throws Exception {
+    void should_return_400_when_put_status_missing_field() throws Exception {
         mvc.perform(put("/api/admin/orders/2/status").contentType(JSON)
-                        .content("{}")) // status is @NotNull
+                        .content("{}")) // status is @NotNull → validado en el monolito
                 .andExpect(status().isBadRequest());
     }
 

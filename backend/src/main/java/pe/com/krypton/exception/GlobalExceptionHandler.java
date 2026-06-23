@@ -1,5 +1,6 @@
 package pe.com.krypton.exception;
 
+import feign.FeignException;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -100,6 +101,22 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleStorage(StorageException ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ApiError(500, ex.getMessage()));
+    }
+
+    /**
+     * Errores propagados desde {@code pedidos-service} vía Feign. El monolito actúa como
+     * proxy: re-emite el MISMO status del micro (404 → 404, 422 → 422) para no enmascarar
+     * la causa con un 500. Si el status no es un código HTTP válido ({@code <= 0}: pedidos
+     * caído, timeout, DNS), cae a 502 Bad Gateway — el upstream falló, no el monolito.
+     */
+    @ExceptionHandler(FeignException.class)
+    public ResponseEntity<ApiError> handleFeign(FeignException ex) {
+        int status = ex.status() > 0 ? ex.status() : HttpStatus.BAD_GATEWAY.value();
+        String body = ex.contentUTF8();
+        String message = (body == null || body.isBlank())
+                ? "Error al comunicarse con pedidos-service"
+                : body;
+        return ResponseEntity.status(status).body(new ApiError(status, message));
     }
 
     /**

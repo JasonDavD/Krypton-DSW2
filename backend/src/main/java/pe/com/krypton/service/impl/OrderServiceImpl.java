@@ -5,15 +5,11 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.com.krypton.dto.request.CheckoutRequest;
 import pe.com.krypton.dto.request.PaymentRequest;
 import pe.com.krypton.dto.response.OrderResponse;
-import pe.com.krypton.dto.response.PageResponse;
 import pe.com.krypton.exception.EmptyCartException;
 import pe.com.krypton.exception.InsufficientStockException;
 import pe.com.krypton.exception.InvalidDocumentException;
@@ -39,7 +35,6 @@ import pe.com.krypton.repository.StockMovementRepository;
 import pe.com.krypton.repository.UserRepository;
 import pe.com.krypton.service.CartService;
 import pe.com.krypton.service.OrderService;
-import pe.com.krypton.spec.OrderSpecification;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -210,39 +205,6 @@ public class OrderServiceImpl implements OrderService {
                         "Orden no encontrada: " + orderId));
         // Pago = transición PENDIENTE → CONFIRMADA. La guarda la aplica statusPolicy.
         transitionTo(order, OrderStatus.CONFIRMADA);
-        return orderMapper.toResponse(order, orderItemRepository.findByOrder(order));
-    }
-
-    // ─── ADMIN ───────────────────────────────────────────────────────────────────
-
-    @Override
-    @Transactional(readOnly = true)
-    public PageResponse<OrderResponse> getAllOrders(OrderStatus status, Instant from, Instant to, Pageable pageable) {
-        // Compone los filtros opcionales (null = ausente, gracias al contrato de OrderSpecification).
-        Specification<Order> spec = Specification
-                .where(OrderSpecification.hasStatus(status))
-                .and(OrderSpecification.dateBetween(from, to));
-        Page<OrderResponse> responsePage = orderRepository.findAll(spec, pageable)
-                .map(o -> orderMapper.toResponse(o, orderItemRepository.findByOrder(o)));
-        return PageResponse.of(responsePage);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public OrderResponse getOrder(Long orderId) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Orden no encontrada: " + orderId));
-        return orderMapper.toResponse(order, orderItemRepository.findByOrder(order));
-    }
-
-    @Override
-    @Transactional
-    public OrderResponse updateStatus(Long orderId, OrderStatus newStatus) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Orden no encontrada: " + orderId));
-        transitionTo(order, newStatus);
         return orderMapper.toResponse(order, orderItemRepository.findByOrder(order));
     }
 

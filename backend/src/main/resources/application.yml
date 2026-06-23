@@ -32,6 +32,15 @@ app:
     dir: ${APP_UPLOADS_DIR:./uploads}
     base-url: ${APP_UPLOADS_BASE_URL:http://localhost:8080}
 
+# Eureka: el monolito CONSUME pedidos-service por Feign (lb://PEDIDOS), así que necesita el
+# registry para resolverlo. NO se registra a sí mismo: el gateway lo alcanza por URI fija.
+eureka:
+  client:
+    register-with-eureka: false
+    fetch-registry: true
+    service-url:
+      defaultZone: ${EUREKA_SERVER:http://localhost:8761/eureka}
+
 ---
 spring:
   config:

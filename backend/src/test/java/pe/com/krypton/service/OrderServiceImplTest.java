@@ -3,7 +3,6 @@ package pe.com.krypton.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -19,15 +18,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import pe.com.krypton.dto.request.CheckoutRequest;
 import pe.com.krypton.dto.request.PaymentRequest;
 import pe.com.krypton.dto.response.OrderResponse;
-import pe.com.krypton.dto.response.PageResponse;
 import pe.com.krypton.exception.EmptyCartException;
 import pe.com.krypton.exception.InsufficientStockException;
 import pe.com.krypton.exception.InvalidDocumentException;
@@ -528,143 +521,8 @@ class OrderServiceImplTest {
     }
 
     // ─── ADMIN GROUP ─────────────────────────────────────────────────────────────
-
-    @Test
-    void getAllOrders_returns_page_of_all_orders() {
-        Pageable pageable = PageRequest.of(0, 10);
-        User u = user(3L, "client@krypton.pe");
-        Order o = order(1L, u, BigDecimal.TEN, OrderStatus.PENDIENTE);
-        Page<Order> page = new PageImpl<>(List.of(o), pageable, 1);
-
-        when(orderRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
-        when(orderItemRepository.findByOrder(o)).thenReturn(List.of());
-        when(orderMapper.toResponse(eq(o), any())).thenReturn(sampleResponse());
-
-        PageResponse<OrderResponse> result = service.getAllOrders(null, null, null, pageable);
-
-        assertThat(result.content()).hasSize(1);
-        assertThat(result.totalElements()).isEqualTo(1);
-    }
-
-    @Test
-    void getOrder_returns_any_order_by_id() {
-        User u = user(3L, "client@krypton.pe");
-        Order o = order(10L, u, BigDecimal.TEN, OrderStatus.PENDIENTE);
-        List<OrderItem> items = List.of();
-
-        when(orderRepository.findById(10L)).thenReturn(Optional.of(o));
-        when(orderItemRepository.findByOrder(o)).thenReturn(items);
-        when(orderMapper.toResponse(o, items)).thenReturn(sampleResponse());
-
-        OrderResponse result = service.getOrder(10L);
-
-        assertThat(result).isNotNull();
-    }
-
-    @Test
-    void getOrder_not_found_throws_ResourceNotFoundException() {
-        when(orderRepository.findById(999L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> service.getOrder(999L))
-                .isInstanceOf(ResourceNotFoundException.class);
-    }
-
-    @Test
-    void updateStatus_confirmada_to_cancelada_reverts_stock_with_entrada_movement() {
-        User u = user(3L, "client@krypton.pe");
-        Order o = order(2L, u, new BigDecimal("599.80"), OrderStatus.CONFIRMADA);
-        Product p = product(10L, "Notebook", new BigDecimal("299.90"), 3); // stock tras la venta
-        OrderItem item = orderItem(1L, o, p, 2, new BigDecimal("299.90"));
-        List<OrderItem> items = List.of(item);
-
-        when(orderRepository.findById(2L)).thenReturn(Optional.of(o));
-        when(orderItemRepository.findByOrder(o)).thenReturn(items);
-        when(productRepository.findByIdWithLock(10L)).thenReturn(Optional.of(p));
-        when(orderRepository.save(o)).thenReturn(o);
-        when(orderMapper.toResponse(eq(o), any())).thenReturn(
-                new OrderResponse(2L, 3L, Instant.now(), "CANCELADA",
-                        "BOLETA", "Cliente", "00000000",
-                        new BigDecimal("599.80"), BigDecimal.ZERO, BigDecimal.ZERO,
-                        new BigDecimal("599.80"), List.of()));
-
-        OrderResponse result = service.updateStatus(2L, OrderStatus.CANCELADA);
-
-        assertThat(o.getStatus()).isEqualTo(OrderStatus.CANCELADA);
-        assertThat(p.getStock()).isEqualTo(5); // 3 + 2 repuestas
-        verify(productRepository).save(p);
-
-        ArgumentCaptor<StockMovement> movCaptor = ArgumentCaptor.forClass(StockMovement.class);
-        verify(stockMovementRepository).save(movCaptor.capture());
-        StockMovement mov = movCaptor.getValue();
-        assertThat(mov.getType()).isEqualTo(MovementType.ENTRADA);
-        assertThat(mov.getQuantity()).isEqualTo(2);
-        assertThat(mov.getReason()).isEqualTo("Cancelación orden #2");
-        assertThat(mov.getReference()).isEqualTo("ORDER-2");
-        assertThat(mov.getCreatedBy()).isNull();
-        assertThat(result.status()).isEqualTo("CANCELADA");
-    }
-
-    @Test
-    void updateStatus_pendiente_to_cancelada_also_reverts_stock() {
-        // Clave: el stock se descontó en checkout (PENDIENTE), así que cancelar
-        // sin haber pagado TAMBIÉN debe reponerlo.
-        User u = user(3L, "client@krypton.pe");
-        Order o = order(2L, u, new BigDecimal("299.90"), OrderStatus.PENDIENTE);
-        Product p = product(10L, "Notebook", new BigDecimal("299.90"), 4);
-        OrderItem item = orderItem(1L, o, p, 1, new BigDecimal("299.90"));
-
-        when(orderRepository.findById(2L)).thenReturn(Optional.of(o));
-        when(orderItemRepository.findByOrder(o)).thenReturn(List.of(item));
-        when(productRepository.findByIdWithLock(10L)).thenReturn(Optional.of(p));
-        when(orderRepository.save(o)).thenReturn(o);
-        when(orderMapper.toResponse(eq(o), any())).thenReturn(
-                new OrderResponse(2L, 3L, Instant.now(), "CANCELADA",
-                        "BOLETA", "Cliente", "00000000",
-                        new BigDecimal("299.90"), BigDecimal.ZERO, BigDecimal.ZERO,
-                        new BigDecimal("299.90"), List.of()));
-
-        service.updateStatus(2L, OrderStatus.CANCELADA);
-
-        assertThat(o.getStatus()).isEqualTo(OrderStatus.CANCELADA);
-        assertThat(p.getStock()).isEqualTo(5); // 4 + 1
-        verify(stockMovementRepository).save(any(StockMovement.class));
-    }
-
-    @Test
-    void updateStatus_cancelada_to_confirmada_throws_and_nothing_persisted() {
-        // CANCELADA es terminal: revivir una orden cancelada es ilegal.
-        User u = user(3L, "client@krypton.pe");
-        Order o = order(2L, u, BigDecimal.TEN, OrderStatus.CANCELADA);
-
-        when(orderRepository.findById(2L)).thenReturn(Optional.of(o));
-
-        assertThatThrownBy(() -> service.updateStatus(2L, OrderStatus.CONFIRMADA))
-                .isInstanceOf(OrderStatusTransitionException.class);
-
-        verify(orderRepository, never()).save(any());
-        verify(stockMovementRepository, never()).save(any());
-        verify(productRepository, never()).save(any());
-    }
-
-    @Test
-    void updateStatus_pendiente_to_confirmada_does_not_touch_stock() {
-        // Transición legal que NO es cancelación → no reposición de stock.
-        User u = user(3L, "client@krypton.pe");
-        Order o = order(2L, u, BigDecimal.TEN, OrderStatus.PENDIENTE);
-
-        when(orderRepository.findById(2L)).thenReturn(Optional.of(o));
-        when(orderRepository.save(o)).thenReturn(o);
-        when(orderItemRepository.findByOrder(o)).thenReturn(List.of());
-        when(orderMapper.toResponse(eq(o), any())).thenReturn(
-                new OrderResponse(2L, 3L, Instant.now(), "CONFIRMADA",
-                        "BOLETA", "Cliente", "00000000",
-                        BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.TEN, List.of()));
-
-        OrderResponse result = service.updateStatus(2L, OrderStatus.CONFIRMADA);
-
-        assertThat(o.getStatus()).isEqualTo(OrderStatus.CONFIRMADA);
-        verify(stockMovementRepository, never()).save(any());
-        verify(productRepository, never()).save(any());
-        assertThat(result.status()).isEqualTo("CONFIRMADA");
-    }
+    // Movido a pedidos-service: el admin de órdenes ahora delega vía Feign
+    // (AdminOrderService → PedidosClient). Cobertura en AdminOrderServiceImplTest
+    // y AdminOrderControllerTest. El stock-revert al cancelar es deuda conocida
+    // (saga) fuera del monolito, por eso ya no se prueba acá.
 }

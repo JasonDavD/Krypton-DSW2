@@ -1,13 +1,9 @@
 package pe.com.krypton.service;
 
-import java.time.Instant;
 import java.util.List;
-import org.springframework.data.domain.Pageable;
 import pe.com.krypton.dto.request.CheckoutRequest;
 import pe.com.krypton.dto.request.PaymentRequest;
 import pe.com.krypton.dto.response.OrderResponse;
-import pe.com.krypton.dto.response.PageResponse;
-import pe.com.krypton.model.enums.OrderStatus;
 
 public interface OrderService {
 
@@ -30,17 +26,4 @@ public interface OrderService {
      * Throws OrderStatusTransitionException (422) if not PENDIENTE.
      */
     OrderResponse pay(String email, Long orderId, PaymentRequest request);
-
-    /** Admin: lista paginada de órdenes con filtros opcionales (estado, rango de fecha). */
-    PageResponse<OrderResponse> getAllOrders(OrderStatus status, Instant from, Instant to, Pageable pageable);
-
-    /** Admin: single order by id. Throws ResourceNotFoundException (404) if not found. */
-    OrderResponse getOrder(Long orderId);
-
-    /**
-     * Admin: cambia el estado de una orden respetando la máquina de estados
-     * (OrderStatusPolicy). Transición ilegal → OrderStatusTransitionException (422).
-     * Cancelar (→ CANCELADA) repone el stock con un StockMovement(ENTRADA).
-     */
-    OrderResponse updateStatus(Long orderId, OrderStatus newStatus);
 }

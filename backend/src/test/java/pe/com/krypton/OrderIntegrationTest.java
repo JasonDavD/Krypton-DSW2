@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -483,6 +484,9 @@ class OrderIntegrationTest extends AbstractIntegrationTest {
     // ─── P6.12 Admin paginated list ──────────────────────────────────────────────
 
     @Test
+    @Disabled("Migrado a pedidos-service: el admin de órdenes ahora delega vía Feign (PEDIDOS). "
+            + "Este caso pertenece al suite de integración de pedidos-service, no al monolito. "
+            + "La tabla orders del monolito está vacía y el endpoint ya no la lee.")
     void admin_paginated_list_shows_all_orders_with_userId() throws Exception {
         String adminToken = adminToken();
         long catId = createCategory(adminToken, "IT-Ord-AdminList");
@@ -519,6 +523,8 @@ class OrderIntegrationTest extends AbstractIntegrationTest {
     // ─── P6.13 Admin order detail ────────────────────────────────────────────────
 
     @Test
+    @Disabled("Migrado a pedidos-service: el detalle admin ahora viene del micro PEDIDOS vía Feign. "
+            + "Cobertura del contrato HTTP en AdminOrderControllerTest (web slice).")
     void admin_can_get_any_users_order() throws Exception {
         String adminToken = adminToken();
         long catId = createCategory(adminToken, "IT-Ord-AdminDet");
@@ -545,6 +551,9 @@ class OrderIntegrationTest extends AbstractIntegrationTest {
     // ─── P6.14 Admin status update ───────────────────────────────────────────────
 
     @Test
+    @Disabled("Migrado a pedidos-service: el cambio de estado admin lo valida y persiste el micro "
+            + "PEDIDOS (dueño de la orden). El monolito solo delega vía Feign; la propagación de "
+            + "status (404/422) se cubre en AdminOrderControllerTest y GlobalExceptionHandlerFeignTest.")
     void admin_can_update_status_with_no_transition_guard() throws Exception {
         String adminToken = adminToken();
         long catId = createCategory(adminToken, "IT-Ord-AdminStatus");

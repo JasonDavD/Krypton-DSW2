@@ -1,0 +1,26 @@
+server:
+  port: 8093
+
+spring:
+  application:
+    name: PEDIDOS
+  data:
+    mongodb:
+      # OJO: Boot 3.x usa `spring.data.mongodb.uri`. NO uses `spring.mongodb.uri`
+      # (eso es Boot 4 y Spring lo ignora silenciosamente, conectando a la db `test`).
+      uri: ${MONGODB_URI:mongodb://localhost:27017/pedidos}
+  cloud:
+    openfeign:
+      circuitbreaker:
+        # Habilita el circuit-breaker de Resilience4j alrededor de los clientes Feign,
+        # necesario para que el fallback (CatalogoClientFallback) se active.
+        enabled: true
+
+# Service discovery
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER:http://localhost:8761/eureka}
+  instance:
+    # Registra la IP en vez del hostname (más fiable en local/docker).
+    prefer-ip-address: true

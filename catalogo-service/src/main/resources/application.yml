@@ -1,0 +1,35 @@
+server:
+  port: 8092
+
+spring:
+  application:
+    name: CATALOGO
+  datasource:
+    url: jdbc:mysql://localhost:3307/catalogo?createDatabaseIfNotExist=true
+    username: ${DB_USER:krypton}
+    password: ${DB_PASSWORD:krypton}
+  jpa:
+    hibernate:
+      ddl-auto: validate          # Flyway es dueño del schema; Hibernate solo valida
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          # MySQL DATETIME no guarda zona horaria. Forzamos UTC para leer/escribir
+          # los Instant siempre en UTC (paridad con el monolito).
+          time_zone: UTC
+  flyway:
+    enabled: true                 # aplica las migraciones pendientes al arrancar
+
+# Service discovery
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+
+# URL base para construir las URLs absolutas de las imágenes de producto.
+# El servicio que sirve los binarios sigue siendo el monolito por ahora.
+app:
+  uploads:
+    base-url: ${APP_UPLOADS_BASE_URL:http://localhost:8080}

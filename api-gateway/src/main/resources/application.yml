@@ -1,0 +1,53 @@
+server:
+  port: 8094
+
+spring:
+  application:
+    name: API-GATEWAY
+  cloud:
+    gateway:
+      # CORS centralizado en la fachada: el browser (Vite :5173) habla SOLO con el gateway.
+      # add-to-simple-url-handler-mapping=true → el preflight OPTIONS se resuelve acá,
+      # ANTES de los filtros (el JwtUserHeaderFilter no llega a tocarlo).
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "${CORS_ALLOWED_ORIGIN:http://localhost:5173}"
+            allowedMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+            allowedHeaders: "*"
+            allowCredentials: true
+            exposedHeaders: [Content-Disposition]
+            maxAge: 3600
+      # El monolito YA agrega sus propios headers CORS. Sin esto, la respuesta sale con
+      # Access-Control-Allow-Origin DUPLICADO (monolito + gateway) y el browser la rechaza.
+      # DedupeResponseHeader colapsa los duplicados a un único valor.
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials Access-Control-Expose-Headers, RETAIN_UNIQUE
+      routes:
+        # El ORDEN importa: las rutas especificas van ANTES del catch-all del monolito.
+        - id: catalogo
+          uri: lb://CATALOGO            # lb:// = balanceo via Eureka, NUNCA URL fija
+          predicates:
+            - Path=/api/products/**
+        - id: pedidos
+          uri: lb://PEDIDOS
+          predicates:
+            - Path=/api/orders/**
+        # El monolito NO esta registrado en Eureka -> URI fija (parametrizable para Docker).
+        - id: monolito
+          uri: ${MONOLITH_URI:http://localhost:8080}
+          predicates:
+            - Path=/api/**
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true            # registra por IP: evita lios de hostname dentro de Docker
+
+# Mismo secreto que el monolito: el gateway valida el JWT y extrae el claim userId.
+app:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-change-me-krypton-secret-key-1234567890}

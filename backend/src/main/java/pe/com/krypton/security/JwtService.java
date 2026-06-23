@@ -33,6 +33,7 @@ public class JwtService {
         Date now = new Date();
         return Jwts.builder()
                 .subject(user.getEmail())
+                .claim("userId", user.getId())   // ← el gateway lo extrae para inyectar X-User-Id a pedidos
                 .claim("role", user.getRole().name())
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expirationMs))

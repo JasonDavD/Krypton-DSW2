@@ -1,6 +1,23 @@
+# Krypton — ecosistema completo para la demo de microservicios.
+#
+# Orden de arranque (playbook): Bases -> Eureka -> micros -> Gateway.
+# Lo resuelven los depends_on + healthchecks de abajo.
+#
+# Demo prender/apagar (lo que prueba el profe):
+#   docker compose stop catalogo-service   -> el checkout de pedidos cae al fallback (503)
+#   docker compose start catalogo-service  -> se recupera solo via Eureka
+#
+# Levantar todo:   docker compose up --build -d
+# Apagar todo:     docker compose down         (agregar -v para borrar datos y re-sembrar)
+
+name: krypton
+
 services:
+  # ---------- Bases ----------
+  # MySQL del monolito + catalogo (cada uno su propia base, mismo motor).
+  # Nombre 'db' y volumen conservados del compose original para no perder tu data local.
   db:
-    image: mysql:8
+    image: mysql:8.0
     container_name: krypton-db
     environment:
       MYSQL_DATABASE: krypton
@@ -8,15 +25,124 @@ services:
       MYSQL_PASSWORD: krypton
       MYSQL_ROOT_PASSWORD: root
     ports:
-      # Host 3307 → 3306 del contenedor. 3307 para no chocar con un MySQL nativo en 3306.
-      - "3307:3306"
+      - "3307:3306"                 # host 3307 (no choca con un MySQL nativo en 3306)
     volumes:
       - krypton_mysqldata:/var/lib/mysql
+      # Crea la base 'catalogo' y le da permisos a 'krypton'. Corre SOLO en volumen nuevo:
+      # si ya tenias datos, hace falta 'docker compose down -v' para que aplique.
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -u krypton -pkrypton --silent || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 12
+    networks: [krypton-net]
+
+  mongo:
+    image: mongo:7
+    container_name: krypton-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - krypton_mongodata:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [krypton-net]
+
+  # ---------- Discovery ----------
+  eureka-server:
+    build: ./eureka-server
+    container_name: krypton-eureka
+    ports:
+      - "8761:8761"
+    networks: [krypton-net]
+
+  # ---------- Micros ----------
+  catalogo-service:
+    build: ./catalogo-service
+    container_name: krypton-catalogo
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/catalogo?createDatabaseIfNotExist=true
+      DB_USER: krypton
+      DB_PASSWORD: krypton
+    ports:
+      - "8092:8092"                 # expuesto para probar el micro DIRECTO (aislar Gateway/Eureka)
+    depends_on:
+      db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks: [krypton-net]
+
+  pedidos-service:
+    build: ./pedidos-service
+    container_name: krypton-pedidos
+    environment:
+      EUREKA_SERVER: http://eureka-server:8761/eureka
+      MONGODB_URI: mongodb://mongo:27017/pedidos
+    ports:
+      - "8093:8093"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks: [krypton-net]
+
+  # ---------- Monolito (auth, carrito, categorias, admin) ----------
+  backend:
+    build: ./backend
+    container_name: krypton-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/krypton
+      SPRING_DATASOURCE_USERNAME: krypton
+      SPRING_DATASOURCE_PASSWORD: krypton
+      JWT_SECRET: dev-only-change-me-krypton-secret-key-1234567890
+      APP_UPLOADS_DIR: /app/uploads
+      APP_UPLOADS_BASE_URL: http://localhost:8094   # imagenes servidas via el gateway
+      EUREKA_SERVER: http://eureka-server:8761/eureka   # el monolito consume PEDIDOS por Feign
+    ports:
+      - "8080:8080"
+    volumes:
+      - krypton_uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks: [krypton-net]
+
+  # ---------- Gateway (ultimo) ----------
+  api-gateway:
+    build: ./api-gateway
+    container_name: krypton-gateway
+    environment:
+      EUREKA_SERVER: http://eureka-server:8761/eureka
+      MONOLITH_URI: http://backend:8080
+      JWT_SECRET: dev-only-change-me-krypton-secret-key-1234567890
+    ports:
+      - "8094:8094"
+    depends_on:
+      eureka-server:
+        condition: service_started
+      catalogo-service:
+        condition: service_started
+      pedidos-service:
+        condition: service_started
+      backend:
+        condition: service_started
+    networks: [krypton-net]
 
 volumes:
   krypton_mysqldata:
+  krypton_mongodata:
+  krypton_uploads:
+
+networks:
+  krypton-net:
+    driver: bridge

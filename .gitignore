@@ -1,5 +1,9 @@
 # ===== Backend: Java / Maven =====
 backend/target/
+eureka-server/target/
+catalogo-service/target/
+pedidos-service/target/
+api-gateway/target/
 **/*.class
 
 # Imágenes subidas en runtime (galería de productos): no versionar el contenido,

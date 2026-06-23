@@ -1,20 +1,30 @@
 package pe.com.krypton;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import pe.com.krypton.dto.response.OrderResponse;
+import pe.com.krypton.dto.response.PageResponse;
+import pe.com.krypton.service.AdminOrderService;
 import pe.com.krypton.repository.CartItemRepository;
 import pe.com.krypton.repository.CartRepository;
 import pe.com.krypton.repository.CategoryRepository;
@@ -57,6 +67,20 @@ class ReportIntegrationTest extends AbstractIntegrationTest {
     @Autowired ProductRepository productRepository;
     @Autowired CategoryRepository categoryRepository;
     @Autowired UserRepository userRepository;
+
+    // Frontera Feign al micro pedidos: mockeada para no depender de Eureka/PEDIDOS en el IT.
+    // El monolito ya no lee la tabla orders local; R1 (ventas) agrega lo que devuelve pedidos.
+    @MockBean AdminOrderService adminOrderService;
+
+    @BeforeEach
+    void stubPedidos() {
+        OrderResponse o = new OrderResponse(1L, 1L, Instant.parse("2024-06-15T15:00:00Z"),
+                "CONFIRMADA", "BOLETA", "Cliente", "12345678",
+                new BigDecimal("100.00"), BigDecimal.ZERO, BigDecimal.ZERO,
+                new BigDecimal("100.00"), List.of());
+        when(adminOrderService.getAllOrders(any(), any(), any(), anyInt(), anyInt()))
+                .thenReturn(new PageResponse<>(List.of(o), 0, 200, 1L, 1));
+    }
 
     // ─── helpers ────────────────────────────────────────────────────────────────
 

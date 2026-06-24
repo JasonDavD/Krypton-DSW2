@@ -26,3 +26,16 @@ export async function payOrder(id: number, body: PaymentRequest): Promise<OrderR
   const { data } = await api.post<OrderResponse>(`/api/orders/${id}/pay`, body);
   return data;
 }
+
+/** GET /api/comprobantes/{id} — descarga el PDF de la boleta/factura del pedido. */
+export async function downloadComprobante(id: number): Promise<void> {
+  const res = await api.get(`/api/comprobantes/${id}`, { responseType: 'blob' });
+  const url = URL.createObjectURL(res.data as Blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `comprobante_${id}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}

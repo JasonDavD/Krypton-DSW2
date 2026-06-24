@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Check, CreditCard, Smartphone } from 'lucide-react';
+import { Check, CreditCard, Download, Smartphone } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
-import { getMyOrder, payOrder } from './orders.api';
+import { downloadComprobante, getMyOrder, payOrder } from './orders.api';
 import type { OrderResponse, OrderStatus, PaymentMethod } from '../../models/order';
 import './orders.css';
 import './order-detail.css';
@@ -64,6 +64,7 @@ export function OrderDetailPage() {
   const [card, setCard] = useState<CardForm>({ number: '', name: '', expiry: '', cvv: '' });
   const [yape, setYape] = useState<YapeForm>({ phone: '', code: '' });
   const [paying, setPaying] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -112,6 +113,18 @@ export function OrderDetailPage() {
     }
   };
 
+  const descargar = async () => {
+    setDownloading(true);
+    setError(null);
+    try {
+      await downloadComprobante(order.id);
+    } catch {
+      setError('No se pudo descargar el comprobante. Intentá de nuevo.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="ord od">
       <nav className="od-crumb"><Link to="/pedidos">Mis pedidos</Link><span>/</span><strong>Pedido #{order.id}</strong></nav>
@@ -131,6 +144,9 @@ export function OrderDetailPage() {
             <h2>{isFactura ? 'Factura' : 'Boleta'}</h2>
             <div className="od-doc__row"><span>{isFactura ? 'Razón social' : 'Nombre'}</span><strong>{order.customerName}</strong></div>
             <div className="od-doc__row"><span>{isFactura ? 'RUC' : 'DNI'}</span><strong>{order.customerDoc}</strong></div>
+            <button type="button" className="od-doc__dl" onClick={descargar} disabled={downloading}>
+              <Download size={16} /> {downloading ? 'Generando…' : 'Descargar comprobante'}
+            </button>
           </div>
 
           {/* LÍNEAS */}

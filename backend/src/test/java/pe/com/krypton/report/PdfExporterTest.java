@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import pe.com.krypton.dto.response.OrderItemResponse;
 import pe.com.krypton.dto.response.OrderResponse;
 import pe.com.krypton.dto.response.report.KardexMovimientoRow;
 import pe.com.krypton.dto.response.report.KardexReport;
@@ -113,6 +114,41 @@ class PdfExporterTest {
                 null, null, null, null, 0L, List.of());
 
         byte[] bytes = exporter.exportOrdenes(report);
+
+        assertPdf(bytes);
+    }
+
+    // ─── exportComprobante (boleta/factura individual del cliente) ─────────────────
+
+    @Test
+    void exportComprobante_boleta_produces_pdf_magic() {
+        OrderResponse order = new OrderResponse(
+                5L, 10L, Instant.now(), "CONFIRMADA",
+                "BOLETA", "Juan Cliente", "12345678",
+                new BigDecimal("299.90"), BigDecimal.ZERO, new BigDecimal("45.75"),
+                new BigDecimal("299.90"),
+                List.of(new OrderItemResponse(1L, 7L, "Laptop Krypton", 1,
+                        new BigDecimal("299.90"), new BigDecimal("299.90"))));
+
+        byte[] bytes = exporter.exportComprobante(order);
+
+        assertPdf(bytes);
+    }
+
+    @Test
+    void exportComprobante_factura_multiple_items_produces_pdf_magic() {
+        OrderResponse order = new OrderResponse(
+                6L, 11L, Instant.now(), "CONFIRMADA",
+                "FACTURA", "Empresa SAC", "20123456789",
+                new BigDecimal("500.00"), new BigDecimal("20.00"), new BigDecimal("79.32"),
+                new BigDecimal("520.00"),
+                List.of(
+                        new OrderItemResponse(1L, 7L, "Monitor 27", 2,
+                                new BigDecimal("200.00"), new BigDecimal("400.00")),
+                        new OrderItemResponse(2L, 8L, "Teclado mecánico", 1,
+                                new BigDecimal("100.00"), new BigDecimal("100.00"))));
+
+        byte[] bytes = exporter.exportComprobante(order);
 
         assertPdf(bytes);
     }

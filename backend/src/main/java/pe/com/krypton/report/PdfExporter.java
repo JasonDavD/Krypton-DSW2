@@ -12,10 +12,12 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
+import java.math.BigDecimal;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.function.Consumer;
 import org.springframework.stereotype.Component;
+import pe.com.krypton.dto.response.OrderItemResponse;
 import pe.com.krypton.dto.response.OrderResponse;
 import pe.com.krypton.dto.response.report.KardexMovimientoRow;
 import pe.com.krypton.dto.response.report.KardexReport;
@@ -138,6 +140,46 @@ public class PdfExporter {
                 table.addCell(orden.total() != null ? orden.total().toPlainString() : "0.00");
             }
             doc.add(table);
+        });
+    }
+
+    // ─── Comprobante individual del cliente (boleta/factura) ──────────────────────
+
+    /** PDF de la boleta/factura de UN pedido: receptor, líneas y desglose de montos. */
+    public byte[] exportComprobante(OrderResponse order) {
+        boolean factura = "FACTURA".equals(order.documentType());
+        return render(doc -> {
+            doc.add(title(factura ? "FACTURA" : "BOLETA DE VENTA"));
+            doc.add(summaryLine("Comprobante N°: " + order.id()));
+            doc.add(summaryLine("Fecha: " + DT_FMT.format(order.orderDate())));
+            doc.add(summaryLine((factura ? "Razón social: " : "Cliente: ") + order.customerName()));
+            doc.add(summaryLine((factura ? "RUC: " : "DNI: ") + order.customerDoc()));
+
+            PdfPTable table = new PdfPTable(4);
+            table.setWidthPercentage(100);
+            addHeaderCell(table, "Producto");
+            addHeaderCell(table, "Cantidad");
+            addHeaderCell(table, "P. Unit. (S/)");
+            addHeaderCell(table, "Subtotal (S/)");
+            for (OrderItemResponse it : order.items()) {
+                table.addCell(it.productName());
+                table.addCell(String.valueOf(it.quantity()));
+                table.addCell(it.unitPrice() != null ? it.unitPrice().toPlainString() : "0.00");
+                table.addCell(it.subtotal() != null ? it.subtotal().toPlainString() : "0.00");
+            }
+            doc.add(table);
+
+            doc.add(summaryLine(" "));
+            doc.add(summaryLine("Subtotal (S/): " + order.subtotal().toPlainString()));
+            doc.add(summaryLine("Envío (S/): " + order.shippingCost().toPlainString()));
+            if (factura) {
+                BigDecimal base = order.total().subtract(order.igv());
+                doc.add(summaryLine("Op. gravada (S/): " + base.toPlainString()));
+                doc.add(summaryLine("IGV 18% (S/): " + order.igv().toPlainString()));
+            } else {
+                doc.add(summaryLine("IGV incluido (S/): " + order.igv().toPlainString()));
+            }
+            doc.add(summaryLine("TOTAL (S/): " + order.total().toPlainString()));
         });
     }
 

@@ -35,13 +35,9 @@ Confirmá que el gateway ya rutea (repetí hasta obtener `200`):
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8094/api/products    # -> 200
 ```
 
-### 3) Levantar el frontend
-```bash
-cd frontend
-# Verificá que frontend/.env tenga:  VITE_API_BASE_URL=http://localhost:8094
-# (sin eso, el front pega al monolito directo y los pedidos no van al micro)
-npm run dev                        # http://localhost:5173
-```
+### 3) El frontend YA está en Docker
+No hace falta `npm run dev`: el `frontend` es parte del `docker compose up` (build estático
+de Vite servido por nginx, con la URL del gateway horneada). Abrí **http://localhost:5173**.
 
 ### 4) Tener dos sesiones listas
 Abrí dos sesiones (dos ventanas, o una normal + una incógnito):

@@ -155,6 +155,19 @@ services:
         condition: service_started
     networks: [krypton-net]
 
+  # ---------- Frontend (build estatico de Vite servido por nginx) ----------
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:8094   # el browser pega al gateway por su puerto publicado
+    container_name: krypton-frontend
+    ports:
+      - "5173:80"                  # http://localhost:5173 (mismo puerto que en dev)
+    depends_on:
+      - api-gateway
+    networks: [krypton-net]
+
 volumes:
   krypton_mysqldata:
   krypton_mongodata:

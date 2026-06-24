@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import pe.com.krypton.dto.response.ProductImageResponse;
 import pe.com.krypton.exception.ResourceNotFoundException;
 import pe.com.krypton.model.Product;
 import pe.com.krypton.model.ProductImage;
@@ -53,6 +54,23 @@ public class ProductImageServiceImpl implements ProductImageService {
         this.productImageRepository = productImageRepository;
         this.entityManager = entityManager;
         this.baseUrl = baseUrl;
+    }
+
+    // ─── list ────────────────────────────────────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductImageResponse> list(Long productId) {
+        productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado: " + productId));
+        return productImageRepository.findByProductId(productId).stream()
+                .sorted((a, b) -> {
+                    int c = Short.compare(a.getDisplayOrder(), b.getDisplayOrder());
+                    return c != 0 ? c : Long.compare(a.getId(), b.getId());
+                })
+                .map(img -> new ProductImageResponse(
+                        img.getId(), serveUrl(img.getPath()), img.getDisplayOrder(), img.isCover()))
+                .toList();
     }
 
     // ─── upload ──────────────────────────────────────────────────────────────────

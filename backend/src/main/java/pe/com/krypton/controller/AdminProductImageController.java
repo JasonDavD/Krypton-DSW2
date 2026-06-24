@@ -3,6 +3,7 @@ package pe.com.krypton.controller;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import pe.com.krypton.dto.response.ProductImageResponse;
 import pe.com.krypton.service.ProductImageService;
 
 /**
@@ -27,6 +29,12 @@ public class AdminProductImageController {
 
     public AdminProductImageController(ProductImageService productImageService) {
         this.productImageService = productImageService;
+    }
+
+    /** Lista las imágenes del producto (el admin las lee del monolito, no del catálogo). */
+    @GetMapping
+    public List<ProductImageResponse> list(@PathVariable Long productId) {
+        return productImageService.list(productId);
     }
 
     /** Upload a new image for the product. */

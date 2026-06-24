@@ -2,9 +2,17 @@ package pe.com.krypton.service;
 
 import java.util.List;
 import org.springframework.web.multipart.MultipartFile;
+import pe.com.krypton.dto.response.ProductImageResponse;
 
 /** Manages the image gallery for a product. All methods are @Transactional on the impl. */
 public interface ProductImageService {
+
+    /**
+     * Lista las imágenes del producto en orden de galería (displayOrder, luego id).
+     * Es la fuente de verdad del ADMIN: las imágenes viven en el monolito (no en
+     * catalogo-service), por eso el panel admin debe leerlas desde acá.
+     */
+    List<ProductImageResponse> list(Long productId);
 
     /**
      * Uploads an image and attaches it to the product.

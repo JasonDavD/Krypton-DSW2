@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Star, Trash2, Upload, X } from 'lucide-react';
-import { getById } from '../catalog/products.api';
-import { deleteImage, reorderImages, setCover, uploadImage } from './admin-products.api';
+import { deleteImage, getProductImages, reorderImages, setCover, uploadImage } from './admin-products.api';
 import type { ProductImageResponse, ProductResponse } from '../../models/product';
 
 /** Modal de galería: subir (N archivos), reordenar (↑/↓), marcar portada y borrar. */
@@ -18,8 +17,8 @@ export function ProductImagesModal({ product, onClose, onChanged }: {
 
   const load = useCallback(() => {
     setLoading(true);
-    getById(product.id)
-      .then((p) => setImages(p.images ?? []))
+    getProductImages(product.id)
+      .then(setImages)
       .catch(() => setError('No se pudieron cargar las imágenes.'))
       .finally(() => setLoading(false));
   }, [product.id]);

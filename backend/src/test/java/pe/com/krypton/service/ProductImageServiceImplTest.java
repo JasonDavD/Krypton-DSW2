@@ -20,6 +20,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import pe.com.krypton.dto.response.ProductImageResponse;
 import pe.com.krypton.exception.ResourceNotFoundException;
 import pe.com.krypton.model.Product;
 import pe.com.krypton.model.ProductImage;
@@ -82,6 +83,31 @@ class ProductImageServiceImplTest {
 
     private MockMultipartFile validPng(String fieldName) {
         return new MockMultipartFile(fieldName, "photo.png", "image/png", new byte[]{1, 2, 3});
+    }
+
+    // ─── list ──────────────────────────────────────────────────────────────────────
+
+    @Test
+    void list_returns_images_ordered_with_full_urls() {
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product(1L)));
+        when(productImageRepository.findByProductId(1L)).thenReturn(List.of(
+                image(20L, 1L, (short) 1, false),
+                image(10L, 1L, (short) 0, true))); // desordenadas a propósito
+
+        List<ProductImageResponse> result = service.list(1L);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).id()).isEqualTo(10L);        // ordenadas por displayOrder asc
+        assertThat(result.get(0).cover()).isTrue();
+        assertThat(result.get(0).url()).isEqualTo(BASE_URL + "/api/uploads/images/uuid10.jpg");
+        assertThat(result.get(1).id()).isEqualTo(20L);
+    }
+
+    @Test
+    void list_throws_not_found_when_product_missing() {
+        when(productRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.list(99L)).isInstanceOf(ResourceNotFoundException.class);
     }
 
     // ─── upload: validation ───────────────────────────────────────────────────────

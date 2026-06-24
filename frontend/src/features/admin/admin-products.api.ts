@@ -1,5 +1,5 @@
 import { api } from '../../lib/api';
-import type { ProductRequest, ProductResponse } from '../../models/product';
+import type { ProductImageResponse, ProductRequest, ProductResponse } from '../../models/product';
 
 // ─── CRUD de productos (ADMIN) ────────────────────────────────────────────────
 
@@ -21,6 +21,15 @@ export async function deleteProduct(id: number): Promise<void> {
 }
 
 // ─── Galería de imágenes (ADMIN) ──────────────────────────────────────────────
+
+/**
+ * GET .../images — lista las imágenes del producto desde el monolito (fuente de verdad
+ * del admin). El catálogo NO tiene la galería, por eso el admin lee de acá.
+ */
+export async function getProductImages(productId: number): Promise<ProductImageResponse[]> {
+  const { data } = await api.get<ProductImageResponse[]>(`/api/admin/products/${productId}/images`);
+  return data;
+}
 
 /** POST .../images — sube UN archivo (multipart). Axios setea el Content-Type. */
 export async function uploadImage(productId: number, file: File): Promise<void> {

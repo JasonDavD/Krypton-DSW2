@@ -33,17 +33,26 @@ public class ComprobanteServiceImpl implements ComprobanteService {
         if (!user.getId().equals(order.userId())) {
             throw new ResourceNotFoundException("Pedido no encontrado: " + orderId);
         }
+        assertComprobanteDisponible(order); // el comprobante se emite SOLO tras el pago
         return pdfExporter.exportComprobante(order);
     }
 
     @Override
     public byte[] generarComprobanteAdmin(Long orderId) {
         OrderResponse order = adminOrderService.getOrder(orderId);
+        assertComprobanteDisponible(order);
+        return pdfExporter.exportComprobante(order);
+    }
+
+    /**
+     * Un comprobante existe SOLO si el pedido fue pagado. No hay comprobante para un pedido
+     * PENDIENTE (aún sin pagar) ni CANCELADA (anulado). Único criterio para cliente y admin.
+     */
+    private void assertComprobanteDisponible(OrderResponse order) {
         OrderStatus status = OrderStatus.valueOf(order.status());
         if (status == OrderStatus.PENDIENTE || status == OrderStatus.CANCELADA) {
             throw new ComprobanteNoDisponibleException(
-                    "El pedido " + orderId + " no tiene comprobante en estado " + status);
+                    "El pedido " + order.id() + " no tiene comprobante en estado " + status);
         }
-        return pdfExporter.exportComprobante(order);
     }
 }

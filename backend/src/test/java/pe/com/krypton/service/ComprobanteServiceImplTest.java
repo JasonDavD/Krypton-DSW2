@@ -79,6 +79,29 @@ class ComprobanteServiceImplTest {
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
+    // El comprobante se emite SOLO tras el pago: el cliente no puede descargarlo si el pedido
+    // está PENDIENTE (sin pagar) ni CANCELADA. Mismo criterio que el comprobante del admin.
+
+    @Test
+    void should_throw_no_disponible_when_own_order_is_pendiente() {
+        when(userRepository.findByEmail("c@k.pe")).thenReturn(Optional.of(user(10L, "c@k.pe")));
+        when(adminOrderService.getOrder(1L)).thenReturn(orderWithStatus("PENDIENTE")); // propia, sin pagar
+
+        assertThatThrownBy(() -> service.generarComprobante("c@k.pe", 1L))
+                .isInstanceOf(ComprobanteNoDisponibleException.class);
+        verify(pdfExporter, never()).exportComprobante(any());
+    }
+
+    @Test
+    void should_throw_no_disponible_when_own_order_is_cancelada() {
+        when(userRepository.findByEmail("c@k.pe")).thenReturn(Optional.of(user(10L, "c@k.pe")));
+        when(adminOrderService.getOrder(1L)).thenReturn(orderWithStatus("CANCELADA")); // propia, anulada
+
+        assertThatThrownBy(() -> service.generarComprobante("c@k.pe", 1L))
+                .isInstanceOf(ComprobanteNoDisponibleException.class);
+        verify(pdfExporter, never()).exportComprobante(any());
+    }
+
     // ─── admin: sin ownership, solo pedidos pagados ────────────────────────────────
 
     @Test

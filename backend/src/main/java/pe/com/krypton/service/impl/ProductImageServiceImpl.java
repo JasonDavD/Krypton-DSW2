@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import pe.com.krypton.client.CatalogoSyncPublisher;
 import pe.com.krypton.dto.response.ProductImageResponse;
 import pe.com.krypton.exception.ResourceNotFoundException;
 import pe.com.krypton.model.Product;
@@ -29,6 +30,9 @@ import pe.com.krypton.service.StorageService;
  * - delete:     count first; if count==1 → imageUrl=null; if cover+others → promote lowest order
  * - setCover:   demote current (flush via save) → promote target; sync imageUrl
  * - reorder:    STRICT+COMPLETE — body must match product's exact ID set; update displayOrder
+ *
+ * Cada vez que cambia product.imageUrl (la portada) se republica el producto al
+ * catalogo-service (best-effort) — si no, el storefront seguiría mostrando la portada vieja.
  */
 @Service
 public class ProductImageServiceImpl implements ProductImageService {
@@ -41,6 +45,7 @@ public class ProductImageServiceImpl implements ProductImageService {
     private final ProductRepository productRepository;
     private final ProductImageRepository productImageRepository;
     private final EntityManager entityManager;
+    private final CatalogoSyncPublisher catalogoSync;
     private final String baseUrl;
 
     public ProductImageServiceImpl(
@@ -48,11 +53,13 @@ public class ProductImageServiceImpl implements ProductImageService {
             ProductRepository productRepository,
             ProductImageRepository productImageRepository,
             EntityManager entityManager,
+            CatalogoSyncPublisher catalogoSync,
             @Value("${app.uploads.base-url:http://localhost:8080}") String baseUrl) {
         this.storageService = storageService;
         this.productRepository = productRepository;
         this.productImageRepository = productImageRepository;
         this.entityManager = entityManager;
+        this.catalogoSync = catalogoSync;
         this.baseUrl = baseUrl;
     }
 
@@ -112,10 +119,10 @@ public class ProductImageServiceImpl implements ProductImageService {
         image.setCover(isFirstImage);
         productImageRepository.save(image);
 
-        // 7. On first image: sync product.imageUrl
+        // 7. On first image: sync product.imageUrl (y republicar al catalogo)
         if (isFirstImage) {
             product.setImageUrl(serveUrl(filename));
-            productRepository.save(product);
+            saveAndSync(product);
         }
     }
 
@@ -133,7 +140,7 @@ public class ProductImageServiceImpl implements ProductImageService {
             // Last image: null out product imageUrl
             Product product = image.getProduct();
             product.setImageUrl(null);
-            productRepository.save(product);
+            saveAndSync(product);
         } else if (image.isCover()) {
             // Cover deleted with siblings: promote next by lowest displayOrder.
             // IMPORTANT: demote the cover FIRST and flush before promoting the candidate —
@@ -152,7 +159,7 @@ public class ProductImageServiceImpl implements ProductImageService {
 
             Product product = image.getProduct();
             product.setImageUrl(serveUrl(candidate.getPath()));
-            productRepository.save(product);
+            saveAndSync(product);
         }
         // non-cover + others exist: nothing to change on product
 
@@ -221,13 +228,18 @@ public class ProductImageServiceImpl implements ProductImageService {
         target.setCover(true);
         productImageRepository.save(target);
 
-        // Sync product imageUrl
+        // Sync product imageUrl (y republicar al catalogo)
         Product product = target.getProduct();
         product.setImageUrl(serveUrl(target.getPath()));
-        productRepository.save(product);
+        saveAndSync(product);
     }
 
     // ─── private helpers ─────────────────────────────────────────────────────────
+
+    /** Guarda el producto y republica su estado (incluida la portada) al catalogo-service. */
+    private void saveAndSync(Product product) {
+        catalogoSync.publish(productRepository.save(product));
+    }
 
     private String serveUrl(String filename) {
         return baseUrl + "/api/uploads/images/" + filename;

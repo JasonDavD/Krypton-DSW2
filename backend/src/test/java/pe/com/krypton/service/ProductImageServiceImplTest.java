@@ -20,6 +20,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import pe.com.krypton.client.CatalogoSyncPublisher;
 import pe.com.krypton.dto.response.ProductImageResponse;
 import pe.com.krypton.exception.ResourceNotFoundException;
 import pe.com.krypton.model.Product;
@@ -45,6 +46,8 @@ class ProductImageServiceImplTest {
     ProductImageRepository productImageRepository;
     @Mock
     EntityManager entityManager;
+    @Mock
+    CatalogoSyncPublisher catalogoSync;
 
     ProductImageServiceImpl service;
 
@@ -53,7 +56,7 @@ class ProductImageServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new ProductImageServiceImpl(storageService, productRepository,
-                productImageRepository, entityManager, BASE_URL);
+                productImageRepository, entityManager, catalogoSync, BASE_URL);
     }
 
     // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -186,6 +189,9 @@ class ProductImageServiceImplTest {
         assertThat(productCaptor.getValue().getImageUrl())
                 .startsWith(BASE_URL)
                 .contains("uuid1.jpg");
+
+        // La portada cambió → debe republicarse al catalogo (si no, el storefront no la ve).
+        verify(catalogoSync).publish(any(Product.class));
     }
 
     @Test
@@ -206,8 +212,9 @@ class ProductImageServiceImplTest {
         verify(productImageRepository).save(imgCaptor.capture());
         assertThat(imgCaptor.getValue().isCover()).isFalse();
 
-        // Product.save must NOT be called (image_url not updated)
+        // Product.save must NOT be called (image_url not updated) → tampoco se republica.
         verify(productRepository, never()).save(any());
+        verify(catalogoSync, never()).publish(any());
     }
 
     // ─── delete: non-cover image ──────────────────────────────────────────────────
@@ -393,6 +400,9 @@ class ProductImageServiceImplTest {
         ArgumentCaptor<Product> productCaptor = ArgumentCaptor.forClass(Product.class);
         verify(productRepository).save(productCaptor.capture());
         assertThat(productCaptor.getValue().getImageUrl()).contains("uuid11.jpg");
+
+        // Cambió la portada → republica al catalogo para que el storefront la vea.
+        verify(catalogoSync).publish(any(Product.class));
     }
 
     @Test
@@ -410,5 +420,6 @@ class ProductImageServiceImplTest {
 
         verify(productImageRepository, never()).save(any());
         verify(productRepository, never()).save(any());
+        verify(catalogoSync, never()).publish(any());
     }
 }

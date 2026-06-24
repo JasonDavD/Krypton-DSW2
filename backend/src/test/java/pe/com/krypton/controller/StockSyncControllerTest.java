@@ -52,4 +52,21 @@ class StockSyncControllerTest {
         assertThat(req.items().get(0).productId()).isEqualTo(10L);
         assertThat(req.items().get(0).quantity()).isEqualTo(2);
     }
+
+    @Test
+    void should_return_204_and_delegate_to_service_when_revert_posted() throws Exception {
+        String body = """
+                {"reference":"8","items":[{"productId":10,"quantity":1}]}
+                """;
+
+        mvc.perform(post("/internal/stock/revert")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isNoContent());
+
+        ArgumentCaptor<StockSaleRequest> captor = ArgumentCaptor.forClass(StockSaleRequest.class);
+        verify(stockSyncService).revertSale(captor.capture());
+        assertThat(captor.getValue().reference()).isEqualTo("8");
+        assertThat(captor.getValue().items().get(0).productId()).isEqualTo(10L);
+    }
 }

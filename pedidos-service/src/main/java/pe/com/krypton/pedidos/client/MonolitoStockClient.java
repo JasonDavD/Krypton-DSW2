@@ -19,4 +19,8 @@ public interface MonolitoStockClient {
 
     @PostMapping("/internal/stock/sale")
     void registerSale(@RequestBody StockSaleRequest request);
+
+    /** Repone el stock en el monolito al cancelar una orden (espejo de registerSale). */
+    @PostMapping("/internal/stock/revert")
+    void revertSale(@RequestBody StockSaleRequest request);
 }

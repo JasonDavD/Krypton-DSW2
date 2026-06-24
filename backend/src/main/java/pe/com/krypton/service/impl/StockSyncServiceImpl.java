@@ -67,4 +67,33 @@ public class StockSyncServiceImpl implements StockSyncService {
             catalogoSync.publish(product);
         }
     }
+
+    @Override
+    @Transactional
+    public void revertSale(StockSaleRequest request) {
+        // Espejo inverso de registerSale: al cancelar una orden, REPONE el stock (ENTRADA).
+        // No valida stock (estamos sumando), pero igual bloquea y mantiene kardex consistente.
+        for (StockSaleRequest.Line line : request.items()) {
+            Long productId = line.productId();
+            Product product = productRepository.findByIdWithLock(productId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Producto no encontrado: " + productId));
+            int qty = line.quantity();
+
+            product.setStock(product.getStock() + qty);
+            productRepository.save(product);
+
+            StockMovement movement = new StockMovement();
+            movement.setProduct(product);
+            movement.setType(MovementType.ENTRADA);
+            movement.setQuantity(qty);
+            movement.setReason("Cancelación orden #" + request.reference());
+            movement.setReference("ORDER-" + request.reference());
+            movement.setCreatedAt(Instant.now());
+            movement.setCreatedBy(null);
+            stockMovementRepository.save(movement);
+
+            catalogoSync.publish(product);
+        }
+    }
 }

@@ -83,6 +83,31 @@ class StockSyncServiceImplTest {
     }
 
     @Test
+    void should_increment_stock_record_entrada_and_publish_when_sale_reverted() {
+        initService();
+        Product mouse = product(3);
+        when(productRepository.findByIdWithLock(10L)).thenReturn(Optional.of(mouse));
+
+        service.revertSale(sale("123", new Line(10L, 2)));
+
+        // stock cacheado: 3 + 2 = 5 (repuesto), persistido
+        assertThat(mouse.getStock()).isEqualTo(5);
+        verify(productRepository).save(mouse);
+
+        // kardex: ENTRADA por la cancelación
+        ArgumentCaptor<StockMovement> captor = ArgumentCaptor.forClass(StockMovement.class);
+        verify(stockMovementRepository).save(captor.capture());
+        StockMovement mov = captor.getValue();
+        assertThat(mov.getType()).isEqualTo(MovementType.ENTRADA);
+        assertThat(mov.getQuantity()).isEqualTo(2);
+        assertThat(mov.getProduct()).isSameAs(mouse);
+        assertThat(mov.getReason()).isEqualTo("Cancelación orden #123");
+        assertThat(mov.getReference()).isEqualTo("ORDER-123");
+
+        verify(catalogoSync).publish(mouse);
+    }
+
+    @Test
     void should_process_every_line_when_sale_has_multiple_items() {
         initService();
         Product a = product(10);

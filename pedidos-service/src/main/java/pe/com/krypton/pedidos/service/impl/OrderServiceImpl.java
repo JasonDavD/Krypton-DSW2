@@ -197,8 +197,18 @@ public class OrderServiceImpl implements OrderService {
         // Valida la transición contra la máquina de estados (lanza 422 si es ilegal).
         orderStatusPolicy.assertCanTransition(order.getStatus(), newStatus);
         order.setStatus(newStatus);
-        // NOTA: no se ajusta stock acá. La saga de stock cross-service es deuda conocida (fuera de alcance).
         Order saved = orderRepository.save(order);
+
+        // Al CANCELAR, repone el stock en el monolito (espejo del descuento del checkout).
+        // Best-effort: si el monolito está caído, el fallback no rompe la cancelación.
+        if (newStatus == OrderStatus.CANCELADA) {
+            List<StockSaleRequest.Line> lines = saved.getItems().stream()
+                    .map(it -> new StockSaleRequest.Line(it.getProductId(), it.getQuantity()))
+                    .toList();
+            monolitoStockClient.revertSale(
+                    new StockSaleRequest(String.valueOf(saved.getId()), lines));
+        }
+
         return toResponse(saved);
     }
 

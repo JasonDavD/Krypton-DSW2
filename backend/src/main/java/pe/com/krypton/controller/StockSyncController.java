@@ -30,4 +30,11 @@ public class StockSyncController {
     public void registerSale(@RequestBody StockSaleRequest request) {
         stockSyncService.registerSale(request);
     }
+
+    /** POST /internal/stock/revert — revierte la venta al cancelar (repone stock + kardex). */
+    @PostMapping("/revert")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void revertSale(@RequestBody StockSaleRequest request) {
+        stockSyncService.revertSale(request);
+    }
 }

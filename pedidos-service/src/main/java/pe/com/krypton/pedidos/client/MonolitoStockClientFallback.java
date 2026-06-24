@@ -20,4 +20,10 @@ public class MonolitoStockClientFallback implements MonolitoStockClient {
         log.warn("No se pudo notificar la venta {} al monolito (best-effort): stock NO descontado",
                 request != null ? request.reference() : "?");
     }
+
+    @Override
+    public void revertSale(StockSaleRequest request) {
+        log.warn("No se pudo notificar la cancelación {} al monolito (best-effort): stock NO repuesto",
+                request != null ? request.reference() : "?");
+    }
 }

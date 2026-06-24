@@ -22,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
 import pe.com.krypton.pedidos.client.CatalogoClient;
 import pe.com.krypton.pedidos.client.MonolitoStockClient;
+import pe.com.krypton.pedidos.dto.request.StockSaleRequest;
 import pe.com.krypton.pedidos.dto.response.OrderResponse;
 import pe.com.krypton.pedidos.dto.response.PageResponse;
 import pe.com.krypton.pedidos.exception.OrderStatusTransitionException;
@@ -238,6 +239,24 @@ class OrderServiceImplAdminTest {
         assertThat(o.getStatus()).isEqualTo(OrderStatus.ENVIADO);
         assertThat(result.status()).isEqualTo("ENVIADO");
         verify(orderRepository).save(o);
+        verify(monolitoStockClient, never()).revertSale(any()); // solo se repone al CANCELAR
+    }
+
+    @Test
+    void should_revert_stock_in_monolith_when_cancelling_order() {
+        Order o = order(8L, OrderStatus.PENDIENTE, at(2)); // item: productId 10, qty 1
+        when(orderRepository.findById(8L)).thenReturn(Optional.of(o));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.updateStatusForAdmin(8L, OrderStatus.CANCELADA);
+
+        ArgumentCaptor<StockSaleRequest> captor = ArgumentCaptor.forClass(StockSaleRequest.class);
+        verify(monolitoStockClient).revertSale(captor.capture());
+        StockSaleRequest req = captor.getValue();
+        assertThat(req.reference()).isEqualTo("8"); // la orden como referencia
+        assertThat(req.items()).hasSize(1);
+        assertThat(req.items().get(0).productId()).isEqualTo(10L);
+        assertThat(req.items().get(0).quantity()).isEqualTo(1);
     }
 
     @Test

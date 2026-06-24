@@ -7,8 +7,9 @@ terminal son los `docker compose stop/start` que simulan la caída.
 
 **Arquitectura:** `frontend (Vite)` → `api-gateway :8094` → `catalogo-service` (productos),
 `pedidos-service` (órdenes), `backend` (monolito: auth, carrito, admin, comprobante).
-Descubrimiento por Eureka; resiliencia con circuit breakers (Resilience4j) en el monolito→pedidos
-y en el gateway.
+Aparte, `categorias-soap-service :8095` expone las categorías por **SOAP** (no va por el gateway:
+el monolito lo consume por URL fija como puente REST→SOAP). Descubrimiento por Eureka; resiliencia
+con circuit breakers (Resilience4j) en monolito→pedidos y en el gateway, y fallback SOAP en monolito→categorías.
 
 ---
 
@@ -103,6 +104,29 @@ docker compose start backend               # ~30-60s; el admin tarda un poco má
 
 ---
 
+## Escenario 4 — Apago el micro **SOAP de categorías** (desacople SOAP)
+```bash
+docker compose stop categorias-soap-service
+```
+En el browser:
+- **Catálogo** (sidebar de categorías) y **admin → Categorías**: muestran **"servicio no disponible"** (el monolito recibe un **503** del puente REST→SOAP). El resto (productos, pedidos, login) sigue.
+- Terminal (lo contundente — se ve el SOAP desacoplado):
+  ```bash
+  curl -i http://localhost:8094/api/categories
+  # HTTP/1.1 503  →  {"status":503,"error":"El servicio de categorías no está disponible..."}
+  ```
+
+**Qué decir:** "Las categorías se extrajeron a un microservicio **SOAP** con su propia base. El monolito ya no es dueño: actúa de puente REST→SOAP. Si el micro SOAP cae, **falla rápido con 503** y el resto del sistema sigue — desacople real, distinto protocolo (SOAP) y todo."
+
+> Para ver el contrato SOAP directo: `http://localhost:8095/ws/categorias.wsdl` (POST SOAP a `:8095/ws`).
+
+Recuperar:
+```bash
+docker compose start categorias-soap-service     # ~20-40s y vuelve
+```
+
+---
+
 ## Tips para la demo
 - **Apagá/prendé de a uno** y esperá ~30-60s antes de probar (Eureka tarda en propagar).
 - La **1ª acción tras la caída** puede tardar unos segundos (el circuito todavía no abrió); las siguientes son instantáneas — ese es el **circuit breaker** en acción, buen punto para señalar.
@@ -113,12 +137,13 @@ docker compose start backend               # ~30-60s; el admin tarda un poco má
 
 ## Apéndice — Matriz de comportamiento
 
-| Flujo | sin catálogo | sin pedidos | sin backend |
-|---|---|---|---|
-| Login | OK | OK | ❌ cae (auth) |
-| Ver catálogo | 🟢 503 controlado | OK | OK |
-| Mis pedidos | OK | 🟢 503 controlado | OK |
-| Checkout | 🟢 503 controlado | 🟢 503 controlado | 🟢 201 (best-effort: no descuenta stock) |
-| Admin órdenes/reportes | OK | 🟢 503 rápido (~30ms) | ❌ cae (backend) |
+| Flujo | sin catálogo | sin pedidos | sin backend | sin SOAP categorías |
+|---|---|---|---|---|
+| Login | OK | OK | ❌ cae (auth) | OK |
+| Ver catálogo | 🟢 503 controlado | OK | OK | OK (productos; nombres de categoría degradan a null) |
+| Categorías (listar / admin) | OK | OK | ❌ cae (backend) | 🟢 503 controlado |
+| Mis pedidos | OK | 🟢 503 controlado | OK | OK |
+| Checkout | 🟢 503 controlado | 🟢 503 controlado | 🟢 201 (best-effort: no descuenta stock) | OK |
+| Admin órdenes/reportes | OK | 🟢 503 rápido (~30ms) | ❌ cae (backend) | OK |
 
 🟢 = degrada con elegancia · ❌ cae = el servicio caído **es** el que provee esa función (no degradable).

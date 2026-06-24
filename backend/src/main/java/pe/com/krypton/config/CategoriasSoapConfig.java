@@ -3,8 +3,10 @@ package pe.com.krypton.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.oxm.jaxb.Jaxb2Marshaller;
 import org.springframework.ws.client.core.WebServiceTemplate;
+import org.springframework.ws.transport.http.ClientHttpRequestMessageSender;
 
 /**
  * Cliente SOAP hacia categorias-soap-service. El marshaller usa las clases JAXB generadas del
@@ -25,10 +27,17 @@ public class CategoriasSoapConfig {
     public WebServiceTemplate categoriasWebServiceTemplate(
             Jaxb2Marshaller categoriasMarshaller,
             @Value("${CATEGORIAS_SOAP_URL:http://localhost:8095}") String baseUrl) {
+        // Timeouts CORTOS: si el micro SOAP está caído, fallar rápido (WebServiceIOException →
+        // CategoriasUnavailableException → 503) en vez de colgar la request. Degradación elegante.
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(2000);
+        requestFactory.setReadTimeout(3000);
+
         WebServiceTemplate template = new WebServiceTemplate();
         template.setMarshaller(categoriasMarshaller);
         template.setUnmarshaller(categoriasMarshaller);
         template.setDefaultUri(baseUrl + "/ws");
+        template.setMessageSender(new ClientHttpRequestMessageSender(requestFactory));
         return template;
     }
 }

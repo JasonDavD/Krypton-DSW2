@@ -79,6 +79,21 @@ services:
         condition: service_started
     networks: [krypton-net]
 
+  # Micro SOAP de categorias (NO va por Eureka/gateway: el monolito lo consume por URL fija).
+  categorias-soap-service:
+    build: ./categorias-soap-service
+    container_name: krypton-categorias-soap
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/categorias?createDatabaseIfNotExist=true&serverTimezone=UTC&characterEncoding=UTF-8
+      DB_USER: krypton
+      DB_PASSWORD: krypton
+    ports:
+      - "8095:8095"                 # WSDL: http://localhost:8095/ws/categorias.wsdl
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [krypton-net]
+
   pedidos-service:
     build: ./pedidos-service
     container_name: krypton-pedidos
@@ -107,6 +122,7 @@ services:
       APP_UPLOADS_DIR: /app/uploads
       APP_UPLOADS_BASE_URL: http://localhost:8094   # imagenes servidas via el gateway
       EUREKA_SERVER: http://eureka-server:8761/eureka   # el monolito consume PEDIDOS por Feign
+      CATEGORIAS_SOAP_URL: http://categorias-soap-service:8095   # categorias por SOAP (puente REST->SOAP)
     ports:
       - "8080:8080"
     volumes:

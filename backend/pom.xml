@@ -62,6 +62,24 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
         </dependency>
+        <!-- Cliente SOAP hacia categorias-soap-service (WebServiceTemplate + JAXB). Solo cliente:
+             NO @EnableWs, no expone endpoints SOAP. -->
+        <dependency>
+            <groupId>org.springframework.ws</groupId>
+            <artifactId>spring-ws-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-oxm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.xml.bind</groupId>
+            <artifactId>jakarta.xml.bind-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.jaxb</groupId>
+            <artifactId>jaxb-runtime</artifactId>
+        </dependency>
         <!-- Driver MySQL -->
         <dependency>
             <groupId>com.mysql</groupId>
@@ -169,6 +187,25 @@
                         </exclude>
                     </excludes>
                 </configuration>
+            </plugin>
+            <!-- Genera las clases JAXB del cliente SOAP desde el MISMO contrato categoria.xsd
+                 (copiado del micro). Tras tocar el XSD: mvn clean compile. -->
+            <plugin>
+                <groupId>org.jvnet.jaxb</groupId>
+                <artifactId>jaxb-maven-plugin</artifactId>
+                <version>4.0.8</version>
+                <executions>
+                    <execution>
+                        <id>generate-jaxb-categorias</id>
+                        <goals><goal>generate</goal></goals>
+                        <configuration>
+                            <schemaDirectory>${project.basedir}/src/main/resources/wsdl</schemaDirectory>
+                            <schemaIncludes><include>**/*.xsd</include></schemaIncludes>
+                            <generateDirectory>${project.build.directory}/generated-sources/jaxb</generateDirectory>
+                            <generatePackage>pe.com.krypton.soap.ws</generatePackage>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

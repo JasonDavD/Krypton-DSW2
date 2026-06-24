@@ -85,6 +85,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(new ApiError(503, ex.getMessage()));
     }
 
+    /** Degradación elegante cuando el micro SOAP de categorías está caído → 503 claro. */
+    @ExceptionHandler(CategoriasUnavailableException.class)
+    public ResponseEntity<ApiError> handleCategoriasUnavailable(CategoriasUnavailableException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(new ApiError(503, ex.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {
         String detail = ex.getBindingResult().getFieldErrors().stream()

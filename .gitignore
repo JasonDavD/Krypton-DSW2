@@ -4,6 +4,7 @@ eureka-server/target/
 catalogo-service/target/
 pedidos-service/target/
 api-gateway/target/
+categorias-soap-service/target/
 **/*.class
 
 # Imágenes subidas en runtime (galería de productos): no versionar el contenido,

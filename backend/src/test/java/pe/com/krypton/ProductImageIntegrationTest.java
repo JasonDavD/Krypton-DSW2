@@ -28,7 +28,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import pe.com.krypton.repository.ProductImageRepository;
 import pe.com.krypton.repository.ProductRepository;
-import pe.com.krypton.repository.CategoryRepository;
 
 /**
  * Full end-to-end integration tests for the product image feature.
@@ -66,7 +65,6 @@ class ProductImageIntegrationTest extends AbstractIntegrationTest {
     @Autowired ObjectMapper objectMapper;
     @Autowired ProductImageRepository productImageRepository;
     @Autowired ProductRepository productRepository;
-    @Autowired CategoryRepository categoryRepository;
 
     // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -150,9 +148,7 @@ class ProductImageIntegrationTest extends AbstractIntegrationTest {
                             .forEach(img -> productImageRepository.delete(img));
                     productRepository.delete(p);
                 });
-        categoryRepository.findAll().stream()
-                .filter(c -> c.getName() != null && c.getName().startsWith("IMG-"))
-                .forEach(c -> categoryRepository.delete(c));
+        // las categorias viven ahora en el micro SOAP (no en esta DB)
     }
 
     // ─── Upload → DB row + file on disk + imageUrl sync ──────────────────────────

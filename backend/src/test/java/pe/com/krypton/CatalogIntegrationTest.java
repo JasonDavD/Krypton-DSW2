@@ -18,7 +18,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import pe.com.krypton.repository.CategoryRepository;
 import pe.com.krypton.repository.ProductRepository;
 
 /**
@@ -39,7 +38,6 @@ class CatalogIntegrationTest extends AbstractIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper objectMapper;
     @Autowired ProductRepository productRepository;
-    @Autowired CategoryRepository categoryRepository;
 
     // ------------------------------------------------------------------ helpers
 
@@ -105,9 +103,7 @@ class CatalogIntegrationTest extends AbstractIntegrationTest {
         productRepository.findAll().stream()
                 .filter(p -> p.getSku() != null && p.getSku().startsWith("IT-"))
                 .forEach(p -> productRepository.delete(p));
-        categoryRepository.findAll().stream()
-                .filter(c -> c.getName() != null && c.getName().startsWith("IT-"))
-                .forEach(c -> categoryRepository.delete(c));
+        // las categorias viven ahora en el micro SOAP (no en esta DB)
     }
 
     // ------------------------------------------------------------------ task 5.1: public GET sin token

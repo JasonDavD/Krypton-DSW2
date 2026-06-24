@@ -28,7 +28,7 @@ public final class ProductSpecification {
             return null;
         }
         return (root, query, cb) ->
-                cb.equal(root.get("category").get("id"), categoryId);
+                cb.equal(root.get("categoryId"), categoryId);
     }
 
     /**

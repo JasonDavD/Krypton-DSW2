@@ -27,7 +27,6 @@ import pe.com.krypton.dto.response.PageResponse;
 import pe.com.krypton.service.AdminOrderService;
 import pe.com.krypton.repository.CartItemRepository;
 import pe.com.krypton.repository.CartRepository;
-import pe.com.krypton.repository.CategoryRepository;
 import pe.com.krypton.repository.OrderItemRepository;
 import pe.com.krypton.repository.OrderRepository;
 import pe.com.krypton.repository.ProductRepository;
@@ -65,7 +64,6 @@ class ReportIntegrationTest extends AbstractIntegrationTest {
     @Autowired CartItemRepository cartItemRepository;
     @Autowired CartRepository cartRepository;
     @Autowired ProductRepository productRepository;
-    @Autowired CategoryRepository categoryRepository;
     @Autowired UserRepository userRepository;
 
     // Frontera Feign al micro pedidos: mockeada para no depender de Eureka/PEDIDOS en el IT.
@@ -174,11 +172,7 @@ class ReportIntegrationTest extends AbstractIntegrationTest {
                 .toList()
                 .forEach(productRepository::delete);
 
-        // 7. delete IT-RPT categories
-        categoryRepository.findAll().stream()
-                .filter(c -> c.getName() != null && c.getName().startsWith("IT-Rpt-"))
-                .toList()
-                .forEach(categoryRepository::delete);
+        // las categorias viven ahora en el micro SOAP (no en esta DB)
     }
 
     // ─── R1 Ventas Excel — admin JWT → 200 XLSX ──────────────────────────────────

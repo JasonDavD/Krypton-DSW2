@@ -23,7 +23,6 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import pe.com.krypton.repository.CartItemRepository;
 import pe.com.krypton.repository.CartRepository;
-import pe.com.krypton.repository.CategoryRepository;
 import pe.com.krypton.repository.ProductRepository;
 import pe.com.krypton.repository.UserRepository;
 
@@ -45,7 +44,6 @@ class CartIntegrationTest extends AbstractIntegrationTest {
     @Autowired CartItemRepository cartItemRepository;
     @Autowired CartRepository cartRepository;
     @Autowired ProductRepository productRepository;
-    @Autowired CategoryRepository categoryRepository;
     @Autowired UserRepository userRepository;
 
     // ─── helpers ────────────────────────────────────────────────────────────────
@@ -118,15 +116,11 @@ class CartIntegrationTest extends AbstractIntegrationTest {
                 .filter(u -> u.getEmail().startsWith("it-cart-"))
                 .toList()
                 .forEach(userRepository::delete);
-        // Delete IT-CART- products and IT-Cart- categories (FK order)
+        // Delete IT-CART- products (las categorias viven ahora en el micro SOAP, no en esta DB)
         productRepository.findAll().stream()
                 .filter(p -> p.getSku() != null && p.getSku().startsWith("IT-CART-"))
                 .toList()
                 .forEach(productRepository::delete);
-        categoryRepository.findAll().stream()
-                .filter(c -> c.getName() != null && c.getName().startsWith("IT-Cart-"))
-                .toList()
-                .forEach(categoryRepository::delete);
     }
 
     // ─── P7.2 Authentication required ────────────────────────────────────────────

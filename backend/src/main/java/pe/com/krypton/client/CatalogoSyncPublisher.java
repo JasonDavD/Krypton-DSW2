@@ -25,10 +25,9 @@ public class CatalogoSyncPublisher {
     /** Empuja el producto al catálogo. Tolera fallos del micro (no propaga la excepción). */
     public void publish(Product p) {
         try {
-            Long categoryId = p.getCategory() != null ? p.getCategory().getId() : null;
             client.sync(p.getId(), new ProductSyncRequest(
                     p.getSku(), p.getName(), p.getDescription(), p.getPrice(),
-                    p.getStock(), p.getImageUrl(), p.isActive(), categoryId));
+                    p.getStock(), p.getImageUrl(), p.isActive(), p.getCategoryId()));
         } catch (Exception e) {
             log.warn("No se pudo sincronizar el producto {} al catalogo (best-effort): {}",
                     p.getId(), e.getMessage());

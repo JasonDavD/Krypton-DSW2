@@ -13,7 +13,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pe.com.krypton.dto.request.ProductSyncRequest;
-import pe.com.krypton.model.Category;
 import pe.com.krypton.model.Product;
 
 /**
@@ -34,9 +33,7 @@ class CatalogoSyncPublisherTest {
         p.setPrice(new BigDecimal("4299.00"));
         p.setStock(12);
         p.setActive(active);
-        Category c = new Category();
-        c.setId(1L);
-        p.setCategory(c);
+        p.setCategoryId(1L);
         return p;
     }
 

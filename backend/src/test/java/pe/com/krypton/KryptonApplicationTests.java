@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import pe.com.krypton.repository.CartItemRepository;
 import pe.com.krypton.repository.CartRepository;
-import pe.com.krypton.repository.CategoryRepository;
 import pe.com.krypton.repository.OrderItemRepository;
 import pe.com.krypton.repository.OrderRepository;
 import pe.com.krypton.repository.ProductRepository;
@@ -16,7 +15,6 @@ import pe.com.krypton.repository.UserRepository;
 class KryptonApplicationTests extends AbstractIntegrationTest {
 
     @Autowired UserRepository users;
-    @Autowired CategoryRepository categories;
     @Autowired ProductRepository products;
     @Autowired CartRepository carts;
     @Autowired CartItemRepository cartItems;
@@ -32,11 +30,10 @@ class KryptonApplicationTests extends AbstractIntegrationTest {
 
     @Test
     void all_entities_map_to_their_tables() {
-        // Cada count() ejecuta un SELECT sobre la tabla mapeada:
-        // prueba el binding entidad <-> tabla de las 8 entidades.
-        // No vacías por seed de Flyway: V3 siembra el ADMIN; V6 siembra categorías + productos demo.
+        // Cada count() ejecuta un SELECT sobre la tabla mapeada (binding entidad <-> tabla).
+        // Category se desacopló a categorias-soap-service (su tabla ya no vive acá).
+        // No vacías por seed de Flyway: V3 siembra el ADMIN; V6 siembra productos demo.
         assertThat(users.count()).isPositive();
-        assertThat(categories.count()).isPositive();
         assertThat(products.count()).isPositive();
         assertThat(carts.count()).isZero();
         assertThat(cartItems.count()).isZero();

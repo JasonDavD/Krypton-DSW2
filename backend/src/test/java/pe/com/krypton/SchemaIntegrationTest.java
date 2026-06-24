@@ -24,8 +24,10 @@ class SchemaIntegrationTest extends AbstractIntegrationTest {
                 String.class);
 
         assertThat(tables).contains(
-                "users", "categories", "products", "cart",
+                "users", "products", "cart",
                 "cart_item", "orders", "order_items", "stock_movement");
+        // 'categories' se desacopló a categorias-soap-service: V8 la dropeó de esta DB.
+        assertThat(tables).doesNotContain("categories");
     }
 
     @Test

@@ -21,7 +21,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import pe.com.krypton.repository.CartItemRepository;
 import pe.com.krypton.repository.CartRepository;
-import pe.com.krypton.repository.CategoryRepository;
 import pe.com.krypton.repository.OrderItemRepository;
 import pe.com.krypton.repository.OrderRepository;
 import pe.com.krypton.repository.ProductRepository;
@@ -55,7 +54,6 @@ class OrderIntegrationTest extends AbstractIntegrationTest {
     @Autowired CartItemRepository cartItemRepository;
     @Autowired CartRepository cartRepository;
     @Autowired ProductRepository productRepository;
-    @Autowired CategoryRepository categoryRepository;
     @Autowired UserRepository userRepository;
 
     // ─── helpers ────────────────────────────────────────────────────────────────
@@ -177,11 +175,7 @@ class OrderIntegrationTest extends AbstractIntegrationTest {
                 .toList()
                 .forEach(productRepository::delete);
 
-        // 7. delete IT categories (prefix IT-Ord-)
-        categoryRepository.findAll().stream()
-                .filter(c -> c.getName() != null && c.getName().startsWith("IT-Ord-"))
-                .toList()
-                .forEach(categoryRepository::delete);
+        // las categorias viven ahora en el micro SOAP (no en esta DB)
     }
 
     // ─── P6.3 Full checkout flow ─────────────────────────────────────────────────

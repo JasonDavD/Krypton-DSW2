@@ -79,12 +79,11 @@ class ProductSpecificationTest {
     @Test
     @SuppressWarnings("unchecked")
     void hasCategory_builds_equal_predicate_when_filter_present() {
-        Path<Object> categoryPath = mock(Path.class);
         Path<Object> categoryIdPath = mock(Path.class);
         Predicate predicate = mock(Predicate.class);
 
-        when(root.get("category")).thenReturn(categoryPath);
-        when(categoryPath.get("id")).thenReturn(categoryIdPath);
+        // category_id es ahora un id suelto (Category vive en el micro SOAP): get("categoryId") directo
+        when(root.get("categoryId")).thenReturn(categoryIdPath);
         when(cb.equal(categoryIdPath, 5L)).thenReturn(predicate);
 
         Specification<Product> spec = ProductSpecification.hasCategory(5L);

@@ -39,9 +39,10 @@ public class Product {
     @Column(nullable = false)
     private boolean active;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "category_id")
-    private Category category;
+    // Category vive en categorias-soap-service (desacoplado): acá es un id suelto, SIN FK ni
+    // @ManyToOne (mismo criterio que catalogo-service). El nombre se resuelve por SOAP.
+    @Column(name = "category_id", nullable = false)
+    private Long categoryId;
 
     @OneToMany(mappedBy = "product", fetch = FetchType.LAZY)
     @OrderBy("displayOrder ASC, id ASC")

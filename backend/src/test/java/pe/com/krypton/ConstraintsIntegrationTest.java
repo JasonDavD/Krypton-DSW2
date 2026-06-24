@@ -10,12 +10,10 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import pe.com.krypton.model.Cart;
-import pe.com.krypton.model.Category;
 import pe.com.krypton.model.Product;
 import pe.com.krypton.model.User;
 import pe.com.krypton.model.enums.Role;
 import pe.com.krypton.repository.CartRepository;
-import pe.com.krypton.repository.CategoryRepository;
 import pe.com.krypton.repository.ProductRepository;
 import pe.com.krypton.repository.UserRepository;
 
@@ -30,28 +28,21 @@ import pe.com.krypton.repository.UserRepository;
 class ConstraintsIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired UserRepository users;
-    @Autowired CategoryRepository categories;
     @Autowired ProductRepository products;
     @Autowired CartRepository carts;
     @Autowired JdbcTemplate jdbc;
 
     @Test
     void rejects_duplicate_sku() {
-        Category cat = categories.saveAndFlush(newCategory());
-        products.saveAndFlush(newProduct("SKU-DUP", cat));
+        products.saveAndFlush(newProduct("SKU-DUP"));
 
-        assertThatThrownBy(() -> products.saveAndFlush(newProduct("SKU-DUP", cat)))
+        assertThatThrownBy(() -> products.saveAndFlush(newProduct("SKU-DUP")))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
-    @Test
-    void rejects_product_with_nonexistent_category() {
-        assertThatThrownBy(() -> jdbc.update(
-                "INSERT INTO products (sku, name, price, stock, active, category_id) "
-                        + "VALUES (?, ?, ?, ?, ?, ?)",
-                "SKU-GHOST", "Ghost", new BigDecimal("9.99"), 0, true, 999_999L))
-                .isInstanceOf(DataIntegrityViolationException.class);
-    }
+    // NOTA: el test "rejects_product_with_nonexistent_category" se ELIMINÓ a propósito: Category se
+    // desacopló a categorias-soap-service y products.category_id ya NO tiene FK (id suelto, como en
+    // catalogo-service). La existencia de la categoría la valida el monolito vía SOAP, no la DB.
 
     @Test
     void rejects_second_cart_for_same_user() {
@@ -64,20 +55,14 @@ class ConstraintsIntegrationTest extends AbstractIntegrationTest {
 
     // ----- helpers -----
 
-    private Category newCategory() {
-        Category c = new Category();
-        c.setName("Cat-" + System.nanoTime());
-        return c;
-    }
-
-    private Product newProduct(String sku, Category cat) {
+    private Product newProduct(String sku) {
         Product p = new Product();
         p.setSku(sku);
         p.setName("Producto");
         p.setPrice(new BigDecimal("10.00"));
         p.setStock(0);
         p.setActive(true);
-        p.setCategory(cat);
+        p.setCategoryId(1L);
         return p;
     }
 

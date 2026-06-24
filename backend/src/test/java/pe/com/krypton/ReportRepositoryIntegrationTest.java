@@ -11,11 +11,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import pe.com.krypton.model.Category;
 import pe.com.krypton.model.Product;
 import pe.com.krypton.model.StockMovement;
 import pe.com.krypton.model.enums.MovementType;
-import pe.com.krypton.repository.CategoryRepository;
 import pe.com.krypton.repository.ProductRepository;
 import pe.com.krypton.repository.StockMovementRepository;
 
@@ -41,26 +39,20 @@ class ReportRepositoryIntegrationTest extends AbstractIntegrationTest {
     private static final Instant D1_LIMA_START = D1.atStartOfDay(LIMA).toInstant();
     private static final Instant D2_LIMA_START = D2.atStartOfDay(LIMA).toInstant();
 
-    @Autowired CategoryRepository categoryRepository;
     @Autowired ProductRepository productRepository;
     @Autowired StockMovementRepository stockMovementRepository;
 
-    private Category category;
     private Product product1;
 
     @BeforeEach
     void seed() {
-        category = new Category();
-        category.setName("IT-Rpt-Cat-" + System.nanoTime());
-        category = categoryRepository.save(category);
-
         product1 = new Product();
         product1.setSku("IT-RPT-P1-" + System.nanoTime());
         product1.setName("Prod Rpt 1");
         product1.setPrice(new BigDecimal("100.00"));
         product1.setStock(50);
         product1.setActive(true);
-        product1.setCategory(category);
+        product1.setCategoryId(1L); // Category vive en el micro SOAP; acá basta el id
         product1 = productRepository.save(product1);
 
         // Movimiento DENTRO de la ventana [D1_LIMA_START, D2_LIMA_START)
@@ -87,7 +79,6 @@ class ReportRepositoryIntegrationTest extends AbstractIntegrationTest {
         stockMovementRepository.deleteAll(
                 stockMovementRepository.findByProduct_IdOrderByCreatedAtAsc(product1.getId()));
         productRepository.delete(product1);
-        categoryRepository.delete(category);
     }
 
     // ---- R3: kardex / stock movements ---------------------------------------

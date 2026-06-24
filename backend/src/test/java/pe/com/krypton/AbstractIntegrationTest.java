@@ -2,7 +2,9 @@ package pe.com.krypton;
 
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Import;
 import org.testcontainers.containers.MySQLContainer;
+import pe.com.krypton.support.CategoriasSoapTestConfig;
 
 /**
  * Base para tests de integración: levanta UN MySQL real (Testcontainers,
@@ -16,6 +18,7 @@ import org.testcontainers.containers.MySQLContainer;
  * @ServiceConnection cablea el datasource al contenedor automáticamente.
  */
 @SpringBootTest
+@Import(CategoriasSoapTestConfig.class) // categorias por SOAP → fake en memoria en integración
 abstract class AbstractIntegrationTest {
 
     @ServiceConnection

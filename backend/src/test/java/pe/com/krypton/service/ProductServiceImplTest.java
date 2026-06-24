@@ -22,46 +22,46 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import pe.com.krypton.client.CatalogoSyncPublisher;
+import pe.com.krypton.client.CategoriasSoapClient;
 import pe.com.krypton.dto.request.ProductRequest;
 import pe.com.krypton.dto.response.PageResponse;
-import pe.com.krypton.dto.response.ProductImageResponse;
 import pe.com.krypton.dto.response.ProductResponse;
-import pe.com.krypton.model.ProductImage;
 import pe.com.krypton.exception.DuplicateSkuException;
 import pe.com.krypton.exception.ResourceNotFoundException;
 import pe.com.krypton.mapper.ProductMapper;
-import pe.com.krypton.model.Category;
 import pe.com.krypton.model.Product;
-import pe.com.krypton.repository.CategoryRepository;
+import pe.com.krypton.model.ProductImage;
 import pe.com.krypton.repository.ProductRepository;
 import pe.com.krypton.service.impl.ProductServiceImpl;
+import pe.com.krypton.soap.ws.Categoria;
 
 /**
- * Unit test de ProductServiceImpl. Repos MOCKEADOS, sin Spring context, sin DB.
- * TDD: RED escrito antes de que exista ProductServiceImpl.
+ * Unit test de ProductServiceImpl. ProductRepository, el cliente SOAP de categorías y el publisher
+ * van MOCKEADOS. Category vive en categorias-soap-service: el service valida/resuelve el nombre
+ * de categoría por SOAP, y products.category_id es un id suelto.
  */
 @ExtendWith(MockitoExtension.class)
 class ProductServiceImplTest {
 
     @Mock ProductRepository productRepository;
-    @Mock CategoryRepository categoryRepository;
+    @Mock CategoriasSoapClient categoriasSoap;
     @Mock CatalogoSyncPublisher catalogoSync;
 
     ProductServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new ProductServiceImpl(productRepository, categoryRepository,
+        service = new ProductServiceImpl(productRepository, categoriasSoap,
                 new ProductMapper("http://localhost:8080"), catalogoSync);
     }
 
     // ─── helpers ────────────────────────────────────────────────────────────────
 
-    private Category category(Long id) {
-        Category c = new Category();
+    private Categoria categoria(long id, String nombre) {
+        Categoria c = new Categoria();
         c.setId(id);
-        c.setName("Electronics");
-        c.setDescription("Desc");
+        c.setNombre(nombre);
+        c.setDescripcion("Desc of " + nombre);
         return c;
     }
 
@@ -75,7 +75,7 @@ class ProductServiceImplTest {
         p.setStock(10);
         p.setImageUrl(null);
         p.setActive(active);
-        p.setCategory(category(1L));
+        p.setCategoryId(1L);
         return p;
     }
 
@@ -184,9 +184,8 @@ class ProductServiceImplTest {
     @Test
     void should_create_product_when_sku_is_unique_and_category_exists() {
         ProductRequest req = request("NEW-SKU", 1L, 5);
-        Category cat = category(1L);
         when(productRepository.existsBySku("NEW-SKU")).thenReturn(false);
-        when(categoryRepository.findById(1L)).thenReturn(Optional.of(cat));
+        when(categoriasSoap.listar()).thenReturn(List.of(categoria(1, "Electronics")));
         when(productRepository.save(any(Product.class))).thenAnswer(inv -> {
             Product p = inv.getArgument(0);
             p.setId(10L);
@@ -198,6 +197,7 @@ class ProductServiceImplTest {
         assertThat(result.id()).isEqualTo(10L);
         assertThat(result.sku()).isEqualTo("NEW-SKU");
         assertThat(result.stock()).isEqualTo(5); // bootstrap value from request
+        assertThat(result.categoryName()).isEqualTo("Electronics"); // resuelto por SOAP
         verify(catalogoSync).publish(any(Product.class)); // propaga el alta al catalogo
     }
 
@@ -213,7 +213,7 @@ class ProductServiceImplTest {
     @Test
     void should_reject_create_when_category_not_found() {
         when(productRepository.existsBySku("SKU-X")).thenReturn(false);
-        when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
+        when(categoriasSoap.listar()).thenReturn(List.of()); // la categoría 99 no existe en el micro
 
         assertThatThrownBy(() -> service.create(request("SKU-X", 99L, 0)))
                 .isInstanceOf(ResourceNotFoundException.class);
@@ -226,14 +226,13 @@ class ProductServiceImplTest {
     void should_update_product_fields_but_never_change_stock() {
         Product existing = product(1L, "OLD-SKU", true);
         existing.setStock(42); // stock must stay 42 after update
-        Category cat = category(1L);
 
         ProductRequest req = new ProductRequest("NEW-SKU", "New Name", "New Desc",
                 new BigDecimal("199.99"), 999 /* ignored */, "http://img.png", 1L);
 
         when(productRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(productRepository.existsBySkuAndIdNot("NEW-SKU", 1L)).thenReturn(false);
-        when(categoryRepository.findById(1L)).thenReturn(Optional.of(cat));
+        when(categoriasSoap.listar()).thenReturn(List.of(categoria(1, "Electronics")));
         when(productRepository.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
 
         ProductResponse result = service.update(1L, req);
@@ -262,12 +261,11 @@ class ProductServiceImplTest {
     @Test
     void should_allow_update_keeping_same_sku() {
         Product existing = product(1L, "SAME-SKU", true);
-        Category cat = category(1L);
 
         ProductRequest req = request("SAME-SKU", 1L, 0);
         when(productRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(productRepository.existsBySkuAndIdNot("SAME-SKU", 1L)).thenReturn(false);
-        when(categoryRepository.findById(1L)).thenReturn(Optional.of(cat));
+        when(categoriasSoap.listar()).thenReturn(List.of(categoria(1, "Electronics")));
         when(productRepository.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
 
         ProductResponse result = service.update(1L, req);

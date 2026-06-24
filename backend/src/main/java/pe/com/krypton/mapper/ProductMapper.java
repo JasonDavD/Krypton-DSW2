@@ -27,8 +27,12 @@ public class ProductMapper {
         this.baseUrl = baseUrl;
     }
 
-    /** Lean mapping: images field is null (omitted from JSON via @JsonInclude NON_NULL). */
-    public ProductResponse toResponse(Product product) {
+    /**
+     * Lean mapping (images = null, omitted via @JsonInclude NON_NULL) — para list/search.
+     * El categoryName lo resuelve el service por SOAP (categorias-soap-service) y lo pasa acá;
+     * puede ser null si el micro de categorías está caído (degradación elegante).
+     */
+    public ProductResponse toResponse(Product product, String categoryName) {
         return new ProductResponse(
                 product.getId(),
                 product.getSku(),
@@ -38,16 +42,16 @@ public class ProductMapper {
                 product.getStock(),
                 product.getImageUrl(),
                 product.isActive(),
-                product.getCategory().getId(),
-                product.getCategory().getName(),
+                product.getCategoryId(),
+                categoryName,
                 null);
     }
 
     /**
      * Full mapping: images collection is loaded (caller must be inside @Transactional(readOnly=true)
-     * because the collection is LAZY). The list is already ordered by @OrderBy on Product.images.
+     * because the collection is LAZY). El categoryName lo provee el service (vía SOAP).
      */
-    public ProductResponse toResponseWithImages(Product product) {
+    public ProductResponse toResponseWithImages(Product product, String categoryName) {
         List<ProductImageResponse> imageResponses = product.getImages().stream()
                 .map(this::toImageResponse)
                 .toList();
@@ -61,8 +65,8 @@ public class ProductMapper {
                 product.getStock(),
                 product.getImageUrl(),
                 product.isActive(),
-                product.getCategory().getId(),
-                product.getCategory().getName(),
+                product.getCategoryId(),
+                categoryName,
                 imageResponses);
     }
 

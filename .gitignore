@@ -35,3 +35,6 @@ Thumbs.db
 
 # ===== Logs =====
 *.log
+
+# Backups temporales del informe (no versionar)
+*_backup.docx

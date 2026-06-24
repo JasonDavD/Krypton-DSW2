@@ -40,9 +40,10 @@ import pe.com.krypton.service.impl.ReportServiceImpl;
  * Unit test de ReportServiceImpl. Colaboradores MOCKEADOS. Sin Spring context, sin DB.
  *
  * <p>Tras la migración a microservicios, R1 (ventas por período) ya NO lee la tabla MySQL
- * local (vacía): trae las órdenes CONFIRMADA desde {@code pedidos-service} vía
- * {@link AdminOrderService} (Feign) paginando hasta agotar, y AGREGA EN MEMORIA el bucketing
- * por día/mes en zona America/Lima. El kardex y los demás reportes siguen siendo locales.
+ * local (vacía): trae las órdenes desde {@code pedidos-service} vía {@link AdminOrderService}
+ * (Feign) paginando hasta agotar, se queda con las que cuentan como VENTA
+ * (CONFIRMADA/ENVIADO/ENTREGADO) y AGREGA EN MEMORIA el bucketing por día/mes en zona
+ * America/Lima. El kardex y los demás reportes siguen siendo locales.
  */
 @ExtendWith(MockitoExtension.class)
 class ReportServiceImplTest {
@@ -61,29 +62,52 @@ class ReportServiceImplTest {
                 adminOrderService);
     }
 
-    // ─── R1: solo pide CONFIRMADA a pedidos, con los instants Lima ──────────────────
+    // ─── R1: pide TODAS a pedidos (null) con los instants Lima y filtra venta en memoria ──
 
     /**
      * Lima is UTC-5. 2024-03-01 Lima midnight = 2024-03-01T05:00:00Z.
      * Next-day exclusive boundary: 2024-03-02T05:00:00Z.
-     * El servicio delega el filtro de estado + rango a pedidos: solo agrega en memoria.
+     * El servicio pide TODAS las órdenes (status null) del rango y filtra venta en memoria.
      */
     @Test
-    void ventasPorPeriodo_requests_only_confirmadas_with_lima_boundary_instants() {
+    void ventasPorPeriodo_requests_all_statuses_with_lima_boundary_instants() {
         LocalDate desde = LocalDate.of(2024, 3, 1);
         LocalDate hasta = LocalDate.of(2024, 3, 1);
 
         Instant expectedStart = Instant.parse("2024-03-01T05:00:00Z");
         Instant expectedEnd   = Instant.parse("2024-03-02T05:00:00Z");
 
-        when(adminOrderService.getAllOrders(eq(OrderStatus.CONFIRMADA), eq(expectedStart), eq(expectedEnd),
+        when(adminOrderService.getAllOrders(isNull(), eq(expectedStart), eq(expectedEnd),
                 anyInt(), anyInt()))
                 .thenReturn(emptyPage());
 
         service.ventasPorPeriodo(desde, hasta, "dia");
 
         verify(adminOrderService).getAllOrders(
-                eq(OrderStatus.CONFIRMADA), eq(expectedStart), eq(expectedEnd), anyInt(), anyInt());
+                isNull(), eq(expectedStart), eq(expectedEnd), anyInt(), anyInt());
+    }
+
+    /**
+     * REGRESIÓN: una venta sigue contando aunque el admin la avance a ENVIADO/ENTREGADO.
+     * Solo PENDIENTE (sin pagar) y CANCELADA (revertida) quedan fuera de R1.
+     */
+    @Test
+    void ventasPorPeriodo_counts_paid_orders_regardless_of_fulfillment_status() {
+        OrderResponse conf = orderStatus(Instant.parse("2024-01-10T15:00:00Z"), "CONFIRMADA", "100.00");
+        OrderResponse env  = orderStatus(Instant.parse("2024-01-10T16:00:00Z"), "ENVIADO",    "200.00");
+        OrderResponse ent  = orderStatus(Instant.parse("2024-01-10T17:00:00Z"), "ENTREGADO",  "300.00");
+        OrderResponse pend = orderStatus(Instant.parse("2024-01-10T18:00:00Z"), "PENDIENTE",  "999.00");
+        OrderResponse canc = orderStatus(Instant.parse("2024-01-10T19:00:00Z"), "CANCELADA",  "888.00");
+
+        when(adminOrderService.getAllOrders(any(), any(), any(), anyInt(), anyInt()))
+                .thenReturn(singlePage(List.of(conf, env, ent, pend, canc)));
+
+        VentasPorPeriodoReport report = service.ventasPorPeriodo(
+                LocalDate.of(2024, 1, 1), LocalDate.of(2024, 1, 31), "dia");
+
+        // CONFIRMADA + ENVIADO + ENTREGADO = 3 órdenes, 600.00; PENDIENTE y CANCELADA fuera.
+        assertThat(report.totalOrdenes()).isEqualTo(3L);
+        assertThat(report.totalFacturado()).isEqualByComparingTo("600.00");
     }
 
     // ─── R1: bucketing en memoria por día ───────────────────────────────────────────
@@ -382,30 +406,56 @@ class ReportServiceImplTest {
     }
 
     @Test
-    void topProductos_no_dates_requests_confirmadas_without_date_filter() {
-        when(adminOrderService.getAllOrders(eq(OrderStatus.CONFIRMADA), isNull(), isNull(), anyInt(), anyInt()))
+    void topProductos_no_dates_requests_all_statuses_without_date_filter() {
+        when(adminOrderService.getAllOrders(isNull(), isNull(), isNull(), anyInt(), anyInt()))
                 .thenReturn(emptyPage());
         when(productRepository.findAllById(any())).thenReturn(List.of());
 
         service.topProductos(null, null, 10);
 
         verify(adminOrderService).getAllOrders(
-                eq(OrderStatus.CONFIRMADA), isNull(), isNull(), anyInt(), anyInt());
+                isNull(), isNull(), isNull(), anyInt(), anyInt());
     }
 
     @Test
-    void topProductos_with_dates_requests_confirmadas_in_lima_range() {
+    void topProductos_with_dates_requests_all_statuses_in_lima_range() {
         Instant start = Instant.parse("2024-01-01T05:00:00Z");
         Instant end   = Instant.parse("2024-02-01T05:00:00Z");
 
-        when(adminOrderService.getAllOrders(eq(OrderStatus.CONFIRMADA), eq(start), eq(end), anyInt(), anyInt()))
+        when(adminOrderService.getAllOrders(isNull(), eq(start), eq(end), anyInt(), anyInt()))
                 .thenReturn(emptyPage());
         when(productRepository.findAllById(any())).thenReturn(List.of());
 
         service.topProductos(LocalDate.of(2024, 1, 1), LocalDate.of(2024, 1, 31), 10);
 
         verify(adminOrderService).getAllOrders(
-                eq(OrderStatus.CONFIRMADA), eq(start), eq(end), anyInt(), anyInt());
+                isNull(), eq(start), eq(end), anyInt(), anyInt());
+    }
+
+    /**
+     * REGRESIÓN: R2 cuenta unidades de toda venta pagada (ENVIADO/ENTREGADO incluidos),
+     * no solo CONFIRMADA. Las PENDIENTE/CANCELADA no suman unidades.
+     */
+    @Test
+    void topProductos_counts_paid_orders_regardless_of_fulfillment_status() {
+        OrderResponse env  = orderWithItemsStatus(Instant.parse("2024-01-10T15:00:00Z"), "ENVIADO",
+                item(1L, "Laptop", 2, "100.00"));
+        OrderResponse ent  = orderWithItemsStatus(Instant.parse("2024-01-11T15:00:00Z"), "ENTREGADO",
+                item(1L, "Laptop", 3, "100.00"));
+        OrderResponse pend = orderWithItemsStatus(Instant.parse("2024-01-12T15:00:00Z"), "PENDIENTE",
+                item(1L, "Laptop", 5, "100.00"));
+
+        when(adminOrderService.getAllOrders(any(), any(), any(), anyInt(), anyInt()))
+                .thenReturn(singlePage(List.of(env, ent, pend)));
+        when(productRepository.findAllById(any()))
+                .thenReturn(List.of(stubProduct(1L, "KR-LAP-001", "Laptop", 10)));
+
+        TopProductosReport report = service.topProductos(null, null, 10);
+
+        assertThat(report.productos()).hasSize(1);
+        // ENVIADO(2) + ENTREGADO(3) = 5 unidades; PENDIENTE(5) excluido.
+        assertThat(report.productos().get(0).unidades()).isEqualTo(5L);
+        assertThat(report.productos().get(0).ingresos()).isEqualByComparingTo("500.00");
     }
 
     // ─── kardex: product not found → 404 ───────────────────────────────────────────
@@ -522,8 +572,13 @@ class ReportServiceImplTest {
 
     /** Orden CONFIRMADA mínima: solo importan orderDate y total para la agregación. */
     private OrderResponse confirmada(Instant orderDate, String total) {
+        return orderStatus(orderDate, "CONFIRMADA", total);
+    }
+
+    /** Orden con estado arbitrario: solo importan orderDate, status y total para R1. */
+    private OrderResponse orderStatus(Instant orderDate, String status, String total) {
         return new OrderResponse(
-                1L, 1L, orderDate, "CONFIRMADA", "BOLETA", "Cliente", "12345678",
+                1L, 1L, orderDate, status, "BOLETA", "Cliente", "12345678",
                 new BigDecimal(total), BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal(total), List.of());
     }
 
@@ -533,8 +588,13 @@ class ReportServiceImplTest {
 
     /** Orden CONFIRMADA con líneas; para R2 solo importan los items. */
     private OrderResponse orderWithItems(Instant orderDate, OrderItemResponse... items) {
+        return orderWithItemsStatus(orderDate, "CONFIRMADA", items);
+    }
+
+    /** Orden con estado arbitrario y líneas; para R2 importan status + items. */
+    private OrderResponse orderWithItemsStatus(Instant orderDate, String status, OrderItemResponse... items) {
         return new OrderResponse(
-                1L, 1L, orderDate, "CONFIRMADA", "BOLETA", "Cliente", "12345678",
+                1L, 1L, orderDate, status, "BOLETA", "Cliente", "12345678",
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, List.of(items));
     }
 

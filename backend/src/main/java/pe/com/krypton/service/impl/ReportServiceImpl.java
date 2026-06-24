@@ -8,9 +8,11 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -42,6 +44,14 @@ public class ReportServiceImpl implements ReportService {
     /** Tamaño de página al traer órdenes de pedidos vía Feign (se pagina hasta agotar). */
     private static final int PAGE_SIZE = 200;
 
+    /**
+     * Estados que cuentan como VENTA en los reportes R1/R2: una orden pagada y no cancelada.
+     * Una venta sigue siendo venta aunque el admin la avance a ENVIADO o ENTREGADO; por eso
+     * NO se filtra solo por CONFIRMADA. PENDIENTE (sin pagar) y CANCELADA (revertida) quedan fuera.
+     */
+    private static final Set<OrderStatus> VENTA_STATUSES =
+            EnumSet.of(OrderStatus.CONFIRMADA, OrderStatus.ENVIADO, OrderStatus.ENTREGADO);
+
     private final StockMovementRepository stockMovementRepository;
     private final ProductRepository productRepository;
     private final AdminOrderService adminOrderService;
@@ -65,10 +75,10 @@ public class ReportServiceImpl implements ReportService {
         Instant start = toStartOfDay(desde);
         Instant end   = toExclusiveEnd(hasta);
 
-        // pedidos-service es dueño de las órdenes: traemos TODAS las CONFIRMADA del rango
-        // [start, end) paginando hasta agotar. El filtro estado+rango lo aplica pedidos;
-        // acá solo agregamos el bucketing por día/mes en zona Lima (en memoria).
-        List<OrderResponse> orders = fetchAllOrders(OrderStatus.CONFIRMADA, start, end);
+        // pedidos-service es dueño de las órdenes: traemos TODAS las del rango [start, end)
+        // paginando hasta agotar, y nos quedamos con las que cuentan como venta
+        // (CONFIRMADA/ENVIADO/ENTREGADO). El bucketing por día/mes en zona Lima es en memoria.
+        List<OrderResponse> orders = fetchVentaOrders(start, end);
 
         Map<LocalDate, List<OrderResponse>> porBucket = orders.stream()
                 .collect(Collectors.groupingBy(
@@ -95,6 +105,26 @@ public class ReportServiceImpl implements ReportService {
                 totalFacturado,
                 ticketPromedio,
                 filas);
+    }
+
+    /**
+     * Trae las órdenes que cuentan como VENTA en el rango: todas las pagadas y no canceladas
+     * (CONFIRMADA, ENVIADO o ENTREGADO). Pide TODAS a pedidos y filtra por estado en memoria,
+     * porque el endpoint admin de pedidos solo acepta un único estado por llamada.
+     */
+    private List<OrderResponse> fetchVentaOrders(Instant start, Instant end) {
+        return fetchAllOrders(null, start, end).stream()
+                .filter(o -> isVenta(o.status()))
+                .toList();
+    }
+
+    /** ¿El estado (string del snapshot de pedidos) cuenta como venta? Desconocidos → no. */
+    private boolean isVenta(String status) {
+        try {
+            return VENTA_STATUSES.contains(OrderStatus.valueOf(status));
+        } catch (IllegalArgumentException | NullPointerException e) {
+            return false;
+        }
     }
 
     /** Trae todas las órdenes del rango [start, end) con el status dado (null = todos), paginando hasta agotar. */
@@ -136,9 +166,9 @@ public class ReportServiceImpl implements ReportService {
         Instant startInst = desde == null ? null : toStartOfDay(desde);
         Instant endInst   = hasta == null ? null : toExclusiveEnd(hasta);
 
-        // pedidos es dueño de las órdenes: traemos las CONFIRMADA del rango (opcional) y
-        // agrupamos por producto en memoria. unidades = Σ quantity; ingresos = Σ (quantity * unitPrice).
-        List<OrderResponse> orders = fetchAllOrders(OrderStatus.CONFIRMADA, startInst, endInst);
+        // pedidos es dueño de las órdenes: traemos las ventas del rango (opcional) —pagadas y no
+        // canceladas— y agrupamos por producto en memoria. unidades = Σ quantity; ingresos = Σ (quantity * unitPrice).
+        List<OrderResponse> orders = fetchVentaOrders(startInst, endInst);
 
         Map<Long, ProductoAcumulado> porProducto = new LinkedHashMap<>();
         for (OrderResponse o : orders) {

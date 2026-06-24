@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.com.krypton.client.CatalogoSyncPublisher;
 import pe.com.krypton.dto.request.ProductRequest;
 import pe.com.krypton.dto.response.PageResponse;
 import pe.com.krypton.dto.response.ProductResponse;
@@ -25,13 +26,16 @@ public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ProductMapper productMapper;
+    private final CatalogoSyncPublisher catalogoSync;
 
     public ProductServiceImpl(ProductRepository productRepository,
                                CategoryRepository categoryRepository,
-                               ProductMapper productMapper) {
+                               ProductMapper productMapper,
+                               CatalogoSyncPublisher catalogoSync) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.productMapper = productMapper;
+        this.catalogoSync = catalogoSync;
     }
 
     @Override
@@ -82,7 +86,9 @@ public class ProductServiceImpl implements ProductService {
         product.setActive(true);
         product.setCategory(category);
 
-        return productMapper.toResponse(productRepository.save(product));
+        Product saved = productRepository.save(product);
+        catalogoSync.publish(saved);  // propaga el alta al catalogo-service (best-effort)
+        return productMapper.toResponse(saved);
     }
 
     @Override
@@ -103,7 +109,9 @@ public class ProductServiceImpl implements ProductService {
         product.setImageUrl(request.imageUrl());
         product.setCategory(category);
 
-        return productMapper.toResponse(productRepository.save(product));
+        Product saved = productRepository.save(product);
+        catalogoSync.publish(saved);  // propaga la edicion al catalogo-service (best-effort)
+        return productMapper.toResponse(saved);
     }
 
     @Override
@@ -112,7 +120,7 @@ public class ProductServiceImpl implements ProductService {
         Product product = findOrThrow(id);
         // SOFT delete: marca como inactivo, no elimina la fila
         product.setActive(false);
-        productRepository.save(product);
+        catalogoSync.publish(productRepository.save(product));  // propaga la baja (best-effort)
     }
 
     // ─── private helpers ────────────────────────────────────────────────────────

@@ -21,6 +21,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import pe.com.krypton.client.CatalogoSyncPublisher;
 import pe.com.krypton.dto.request.ProductRequest;
 import pe.com.krypton.dto.response.PageResponse;
 import pe.com.krypton.dto.response.ProductImageResponse;
@@ -44,12 +45,14 @@ class ProductServiceImplTest {
 
     @Mock ProductRepository productRepository;
     @Mock CategoryRepository categoryRepository;
+    @Mock CatalogoSyncPublisher catalogoSync;
 
     ProductServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new ProductServiceImpl(productRepository, categoryRepository, new ProductMapper("http://localhost:8080"));
+        service = new ProductServiceImpl(productRepository, categoryRepository,
+                new ProductMapper("http://localhost:8080"), catalogoSync);
     }
 
     // ─── helpers ────────────────────────────────────────────────────────────────
@@ -195,6 +198,7 @@ class ProductServiceImplTest {
         assertThat(result.id()).isEqualTo(10L);
         assertThat(result.sku()).isEqualTo("NEW-SKU");
         assertThat(result.stock()).isEqualTo(5); // bootstrap value from request
+        verify(catalogoSync).publish(any(Product.class)); // propaga el alta al catalogo
     }
 
     @Test
@@ -241,6 +245,7 @@ class ProductServiceImplTest {
         ArgumentCaptor<Product> saved = ArgumentCaptor.forClass(Product.class);
         verify(productRepository).save(saved.capture());
         assertThat(saved.getValue().getStock()).isEqualTo(42);
+        verify(catalogoSync).publish(any(Product.class)); // propaga la edicion al catalogo
     }
 
     @Test
@@ -283,6 +288,7 @@ class ProductServiceImplTest {
         ArgumentCaptor<Product> saved = ArgumentCaptor.forClass(Product.class);
         verify(productRepository).save(saved.capture());
         assertThat(saved.getValue().isActive()).isFalse(); // soft delete = active=false
+        verify(catalogoSync).publish(any(Product.class)); // propaga la baja al catalogo
     }
 
     @Test

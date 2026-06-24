@@ -75,6 +75,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(new ApiError(422, ex.getMessage()));
     }
 
+    /**
+     * Degradación elegante cuando pedidos-service está caído (timeout/circuito abierto): el
+     * fallback de PedidosClient lanza esto y respondemos 503 con un mensaje claro, sin colgar
+     * la request. Los 404/422 reales de pedidos NO pasan por acá (los preserva el fallback).
+     */
+    @ExceptionHandler(PedidosUnavailableException.class)
+    public ResponseEntity<ApiError> handlePedidosUnavailable(PedidosUnavailableException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(new ApiError(503, ex.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {
         String detail = ex.getBindingResult().getFieldErrors().stream()

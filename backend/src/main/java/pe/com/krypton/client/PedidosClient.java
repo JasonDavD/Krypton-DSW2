@@ -21,7 +21,7 @@ import pe.com.krypton.model.enums.OrderStatus;
  * <p>Cuando pedidos responde 404/422, Feign lanza {@code FeignException} con ese {@code status()};
  * el {@code GlobalExceptionHandler} del monolito lo re-emite preservando el código.
  */
-@FeignClient(name = "PEDIDOS")
+@FeignClient(name = "PEDIDOS", fallbackFactory = PedidosClientFallbackFactory.class)
 public interface PedidosClient {
 
     /**

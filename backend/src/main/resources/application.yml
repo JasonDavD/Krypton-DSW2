@@ -21,6 +21,16 @@ spring:
     multipart:
       max-file-size: 5MB
       max-request-size: 6MB
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true           # envuelve los clientes Feign en un circuit breaker (Resilience4j)
+      client:
+        config:
+          PEDIDOS:
+            # Timeouts CORTOS: si pedidos está caído, fallar rápido en vez de colgar la request.
+            connect-timeout: 2000
+            read-timeout: 3000
 
 # Configuración de la app (JWT). El secreto real va por env JWT_SECRET en prod.
 # El default es SOLO para desarrollo (≥32 bytes que exige HS256). NO usar en prod.
@@ -40,6 +50,18 @@ eureka:
     fetch-registry: true
     service-url:
       defaultZone: ${EUREKA_SERVER:http://localhost:8761/eureka}
+
+# Circuit breaker (Resilience4j) para los clientes Feign. Ventana chica: con pocas llamadas
+# fallidas el circuito ABRE y deja de intentar (fail-fast instantáneo) hasta reintentar a los 10s.
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 6
+        minimumNumberOfCalls: 3
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 2
 
 ---
 spring:

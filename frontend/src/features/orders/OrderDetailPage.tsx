@@ -99,6 +99,8 @@ export function OrderDetailPage() {
 
   const base = order.total - order.igv; // base imponible = total − IGV
   const isFactura = order.documentType === 'FACTURA';
+  // El comprobante se emite SOLO tras el pago: no existe en PENDIENTE (sin pagar) ni CANCELADA.
+  const isPaid = order.status !== 'PENDIENTE' && order.status !== 'CANCELADA';
 
   const pay = async () => {
     if (!formValid) return;
@@ -139,15 +141,17 @@ export function OrderDetailPage() {
 
       <div className="od-grid">
         <section className="od-main">
-          {/* COMPROBANTE */}
-          <div className="od-card od-doc">
-            <h2>{isFactura ? 'Factura' : 'Boleta'}</h2>
-            <div className="od-doc__row"><span>{isFactura ? 'Razón social' : 'Nombre'}</span><strong>{order.customerName}</strong></div>
-            <div className="od-doc__row"><span>{isFactura ? 'RUC' : 'DNI'}</span><strong>{order.customerDoc}</strong></div>
-            <button type="button" className="od-doc__dl" onClick={descargar} disabled={downloading}>
-              <Download size={16} /> {downloading ? 'Generando…' : 'Descargar comprobante'}
-            </button>
-          </div>
+          {/* COMPROBANTE — solo disponible una vez pagado el pedido */}
+          {isPaid && (
+            <div className="od-card od-doc">
+              <h2>{isFactura ? 'Factura' : 'Boleta'}</h2>
+              <div className="od-doc__row"><span>{isFactura ? 'Razón social' : 'Nombre'}</span><strong>{order.customerName}</strong></div>
+              <div className="od-doc__row"><span>{isFactura ? 'RUC' : 'DNI'}</span><strong>{order.customerDoc}</strong></div>
+              <button type="button" className="od-doc__dl" onClick={descargar} disabled={downloading}>
+                <Download size={16} /> {downloading ? 'Generando…' : 'Descargar comprobante'}
+              </button>
+            </div>
+          )}
 
           {/* LÍNEAS */}
           <div className="od-card">
@@ -206,11 +210,6 @@ export function OrderDetailPage() {
                     <input inputMode="numeric" autoComplete="cc-number" placeholder="0000 0000 0000 0000"
                       value={card.number} onChange={(e) => setCard({ ...card, number: groupCard(e.target.value) })} />
                   </label>
-                  <label className="od-field">
-                    <span>Titular</span>
-                    <input autoComplete="cc-name" placeholder="Como figura en la tarjeta"
-                      value={card.name} onChange={(e) => setCard({ ...card, name: e.target.value })} />
-                  </label>
                   <div className="od-field-row">
                     <label className="od-field">
                       <span>Vencimiento</span>
@@ -223,6 +222,11 @@ export function OrderDetailPage() {
                         value={card.cvv} onChange={(e) => setCard({ ...card, cvv: onlyDigits(e.target.value).slice(0, 3) })} />
                     </label>
                   </div>
+                  <label className="od-field">
+                    <span>Titular</span>
+                    <input autoComplete="cc-name" placeholder="Como figura en la tarjeta"
+                      value={card.name} onChange={(e) => setCard({ ...card, name: e.target.value })} />
+                  </label>
                 </div>
               ) : (
                 <div className="od-form">

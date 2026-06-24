@@ -8,10 +8,12 @@ import java.util.List;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import pe.com.krypton.pedidos.client.CatalogoClient;
+import pe.com.krypton.pedidos.client.MonolitoStockClient;
 import pe.com.krypton.pedidos.client.ProductDTO;
 import pe.com.krypton.pedidos.dto.request.CheckoutRequest;
 import pe.com.krypton.pedidos.dto.request.CheckoutRequest.CheckoutItem;
 import pe.com.krypton.pedidos.dto.request.PaymentRequest;
+import pe.com.krypton.pedidos.dto.request.StockSaleRequest;
 import pe.com.krypton.pedidos.dto.response.OrderItemResponse;
 import pe.com.krypton.pedidos.dto.response.OrderResponse;
 import pe.com.krypton.pedidos.dto.response.PageResponse;
@@ -43,15 +45,18 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final CatalogoClient catalogoClient;
+    private final MonolitoStockClient monolitoStockClient;
     private final SequenceGenerator sequenceGenerator;
     private final OrderStatusPolicy orderStatusPolicy;
 
     public OrderServiceImpl(OrderRepository orderRepository,
                             CatalogoClient catalogoClient,
+                            MonolitoStockClient monolitoStockClient,
                             SequenceGenerator sequenceGenerator,
                             OrderStatusPolicy orderStatusPolicy) {
         this.orderRepository = orderRepository;
         this.catalogoClient = catalogoClient;
+        this.monolitoStockClient = monolitoStockClient;
         this.sequenceGenerator = sequenceGenerator;
         this.orderStatusPolicy = orderStatusPolicy;
     }
@@ -79,7 +84,6 @@ public class OrderServiceImpl implements OrderService {
             // Línea embebida con precio y nombre congelados (snapshot al checkout).
             items.add(new OrderItem(product.id(), product.name(), requested, product.price()));
             subtotal = subtotal.add(product.price().multiply(BigDecimal.valueOf(requested)));
-            // TODO saga: stock decrement — este micro NO descuenta stock cross-service.
         }
 
         // ── Montos: envío + total + IGV desglosado hacia adentro ──
@@ -107,6 +111,16 @@ public class OrderServiceImpl implements OrderService {
         order.setItems(items);
 
         Order saved = orderRepository.save(order);
+
+        // Notifica la venta al monolito (master del stock) para que descuente stock + kardex y
+        // re-sincronice el catálogo. Best-effort: si el monolito está caído, el fallback no rompe
+        // la compra (la orden ya quedó persistida acá). Degradación elegante.
+        List<StockSaleRequest.Line> soldLines = items.stream()
+                .map(it -> new StockSaleRequest.Line(it.getProductId(), it.getQuantity()))
+                .toList();
+        monolitoStockClient.registerSale(
+                new StockSaleRequest(String.valueOf(saved.getId()), soldLines));
+
         return toResponse(saved);
     }
 

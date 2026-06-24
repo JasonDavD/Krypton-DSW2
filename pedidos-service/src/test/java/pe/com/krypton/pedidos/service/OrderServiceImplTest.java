@@ -19,10 +19,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pe.com.krypton.pedidos.client.CatalogoClient;
+import pe.com.krypton.pedidos.client.MonolitoStockClient;
 import pe.com.krypton.pedidos.client.ProductDTO;
 import pe.com.krypton.pedidos.dto.request.CheckoutRequest;
 import pe.com.krypton.pedidos.dto.request.CheckoutRequest.CheckoutItem;
 import pe.com.krypton.pedidos.dto.request.PaymentRequest;
+import pe.com.krypton.pedidos.dto.request.StockSaleRequest;
 import pe.com.krypton.pedidos.dto.response.OrderResponse;
 import pe.com.krypton.pedidos.exception.CatalogoUnavailableException;
 import pe.com.krypton.pedidos.exception.InsufficientStockException;
@@ -46,6 +48,7 @@ class OrderServiceImplTest {
 
     @Mock OrderRepository orderRepository;
     @Mock CatalogoClient catalogoClient;
+    @Mock MonolitoStockClient monolitoStockClient;
     @Mock SequenceGenerator sequenceGenerator;
     @Mock OrderStatusPolicy orderStatusPolicy;
 
@@ -54,7 +57,7 @@ class OrderServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new OrderServiceImpl(
-                orderRepository, catalogoClient, sequenceGenerator, orderStatusPolicy);
+                orderRepository, catalogoClient, monolitoStockClient, sequenceGenerator, orderStatusPolicy);
     }
 
     // ─── helpers ────────────────────────────────────────────────────────────────
@@ -122,6 +125,15 @@ class OrderServiceImplTest {
         assertThat(result.total()).isEqualByComparingTo(new BigDecimal("599.80"));
         assertThat(result.items().get(0).id()).isNull(); // embebido: sin id propio
         assertThat(result.items().get(0).subtotal()).isEqualByComparingTo(new BigDecimal("599.80"));
+
+        // Notifica la venta al monolito (master del stock) usando la orden como referencia.
+        ArgumentCaptor<StockSaleRequest> saleCaptor = ArgumentCaptor.forClass(StockSaleRequest.class);
+        verify(monolitoStockClient).registerSale(saleCaptor.capture());
+        StockSaleRequest sale = saleCaptor.getValue();
+        assertThat(sale.reference()).isEqualTo("1"); // saved.getId() == 1
+        assertThat(sale.items()).hasSize(1);
+        assertThat(sale.items().get(0).productId()).isEqualTo(10L);
+        assertThat(sale.items().get(0).quantity()).isEqualTo(2);
     }
 
     @Test
@@ -173,6 +185,7 @@ class OrderServiceImplTest {
 
         verify(orderRepository, never()).save(any());
         verify(sequenceGenerator, never()).nextId(anyString());
+        verify(monolitoStockClient, never()).registerSale(any()); // no hubo venta → no se descuenta
     }
 
     @Test
@@ -185,6 +198,7 @@ class OrderServiceImplTest {
                 .isInstanceOf(InsufficientStockException.class);
 
         verify(orderRepository, never()).save(any());
+        verify(monolitoStockClient, never()).registerSale(any()); // no hubo venta → no se descuenta
     }
 
     // ─── READ GROUP ──────────────────────────────────────────────────────────────

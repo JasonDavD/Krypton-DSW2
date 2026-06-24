@@ -21,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
 import pe.com.krypton.pedidos.client.CatalogoClient;
+import pe.com.krypton.pedidos.client.MonolitoStockClient;
 import pe.com.krypton.pedidos.dto.response.OrderResponse;
 import pe.com.krypton.pedidos.dto.response.PageResponse;
 import pe.com.krypton.pedidos.exception.OrderStatusTransitionException;
@@ -43,6 +44,7 @@ class OrderServiceImplAdminTest {
 
     @Mock OrderRepository orderRepository;
     @Mock CatalogoClient catalogoClient;
+    @Mock MonolitoStockClient monolitoStockClient;
     @Mock SequenceGenerator sequenceGenerator;
     @Mock OrderStatusPolicy orderStatusPolicy;
 
@@ -51,7 +53,7 @@ class OrderServiceImplAdminTest {
     @BeforeEach
     void setUp() {
         service = new OrderServiceImpl(
-                orderRepository, catalogoClient, sequenceGenerator, orderStatusPolicy);
+                orderRepository, catalogoClient, monolitoStockClient, sequenceGenerator, orderStatusPolicy);
     }
 
     // ─── helpers ─────────────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { isAxiosError } from 'axios';
 import { Link, useParams } from 'react-router-dom';
 import { Check, CreditCard, Download, Smartphone } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
@@ -60,6 +61,7 @@ export function OrderDetailPage() {
   const [order, setOrder] = useState<OrderResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [method, setMethod] = useState<PaymentMethod>('YAPE');
   const [card, setCard] = useState<CardForm>({ number: '', name: '', expiry: '', cvv: '' });
   const [yape, setYape] = useState<YapeForm>({ phone: '', code: '' });
@@ -73,7 +75,11 @@ export function OrderDetailPage() {
     if (!Number.isFinite(orderId)) { setNotFound(true); setLoading(false); return; }
     getMyOrder(orderId)
       .then(setOrder)
-      .catch(() => setNotFound(true))
+      // 404 = el pedido no existe / no es tuyo; cualquier otro error = servicio caído.
+      .catch((err) => {
+        if (isAxiosError(err) && err.response?.status === 404) setNotFound(true);
+        else setLoadError(true);
+      })
       .finally(() => setLoading(false));
   }, [id, isAuthenticated]);
 
@@ -87,6 +93,15 @@ export function OrderDetailPage() {
       <Link to="/cuenta/ingresar" className="ord-gate__cta">Iniciar sesión</Link></div>;
   }
   if (loading) return <div className="ord"><p className="ord-status">Cargando pedido…</p></div>;
+  if (loadError) {
+    return (
+      <div className="ord ord-empty">
+        <h1>No pudimos cargar el pedido</h1>
+        <p>El servicio de pedidos no está disponible en este momento. Intentá de nuevo en unos minutos.</p>
+        <Link to="/pedidos" className="ord-empty__cta">Volver a mis pedidos</Link>
+      </div>
+    );
+  }
   if (notFound || !order) {
     return (
       <div className="ord ord-empty">

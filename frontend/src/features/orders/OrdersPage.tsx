@@ -22,12 +22,13 @@ export function OrdersPage() {
   const { isAuthenticated } = useAuth();
   const [orders, setOrders] = useState<OrderResponse[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) { setLoading(false); return; }
     getMyOrders()
       .then(setOrders)
-      .catch(() => setOrders([]))
+      .catch(() => setError(true)) // servicio caído ≠ "sin pedidos": no engañar al usuario
       .finally(() => setLoading(false));
   }, [isAuthenticated]);
 
@@ -42,6 +43,17 @@ export function OrdersPage() {
   }
 
   if (loading) return <div className="ord"><p className="ord-status">Cargando tus pedidos…</p></div>;
+
+  if (error) {
+    return (
+      <div className="ord ord-empty">
+        <span className="ord-empty__ic"><Package size={34} /></span>
+        <h1>No pudimos cargar tus pedidos</h1>
+        <p>El servicio de pedidos no está disponible en este momento. Intentá de nuevo en unos minutos.</p>
+        <Link to="/catalogo" className="ord-empty__cta">Ir al catálogo</Link>
+      </div>
+    );
+  }
 
   if (!orders || orders.length === 0) {
     return (

@@ -25,7 +25,8 @@ public class FallbackController {
     }
 
     private ResponseEntity<Map<String, Object>> unavailable(String message) {
+        // Forma {status, error}: misma que ApiError del monolito, para que el frontend la lea igual.
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(Map.of("status", 503, "message", message));
+                .body(Map.of("status", 503, "error", message));
     }
 }

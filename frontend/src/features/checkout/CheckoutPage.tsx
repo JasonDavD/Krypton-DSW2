@@ -4,6 +4,7 @@ import { ArrowRight, Lock, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
 import { useCart } from '../../cart/CartContext';
 import { checkout } from '../orders/orders.api';
+import { apiErrorMessage } from '../../lib/apiError';
 import type { DocumentType } from '../../models/order';
 import './checkout.css';
 
@@ -74,8 +75,10 @@ export function CheckoutPage() {
       // El micro (Mongo) NO toca el carrito del monolito → lo vaciamos acá explícitamente.
       await clear().catch(() => {});
       navigate(`/pedidos/${order.id}`);
-    } catch {
-      setError('No se pudo completar el pedido. Revisá el stock disponible y los datos del comprobante.');
+    } catch (err) {
+      // Muestra el mensaje real del backend (p.ej. "servicio de pedidos no disponible" en un 503),
+      // y si no hay, cae al genérico de stock/datos.
+      setError(apiErrorMessage(err, 'No se pudo completar el pedido. Revisá el stock disponible y los datos del comprobante.'));
       setSubmitting(false);
     }
   };

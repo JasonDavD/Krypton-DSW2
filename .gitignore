@@ -40,3 +40,8 @@ Thumbs.db
 
 # Backups temporales del informe (no versionar)
 *_backup.docx
+
+# Archivos temporales / lock de Office (Word, Excel) — nunca versionar
+~$*
+~WRL*.tmp
+*.tmp

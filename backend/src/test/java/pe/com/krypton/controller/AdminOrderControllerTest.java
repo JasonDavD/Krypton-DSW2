@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -17,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -29,8 +32,10 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import pe.com.krypton.dto.response.OrderResponse;
 import pe.com.krypton.dto.response.PageResponse;
+import pe.com.krypton.exception.ComprobanteNoDisponibleException;
 import pe.com.krypton.security.JwtAuthenticationFilter;
 import pe.com.krypton.service.AdminOrderService;
+import pe.com.krypton.service.ComprobanteService;
 
 /**
  * Web slice for AdminOrderController.
@@ -49,6 +54,7 @@ class AdminOrderControllerTest {
 
     @Autowired MockMvc mvc;
     @MockBean AdminOrderService adminOrderService;
+    @MockBean ComprobanteService comprobanteService;
 
     private static final String JSON = MediaType.APPLICATION_JSON_VALUE;
 
@@ -155,4 +161,30 @@ class AdminOrderControllerTest {
     // ─── Auth notes ──────────────────────────────────────────────────────────────
     // 401 (no token) and 403 (CLIENTE role on admin endpoint) are verified in integration tests
     // because addFilters=false disables the JWT filter in this web slice.
+
+    // ─── GET /api/admin/orders/{id}/comprobante ──────────────────────────────────
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void should_return_200_pdf_when_comprobante_available() throws Exception {
+        byte[] pdf = new byte[]{ 0x25, 0x50, 0x44, 0x46, 9 }; // %PDF + relleno
+        when(comprobanteService.generarComprobanteAdmin(7L)).thenReturn(pdf);
+
+        mvc.perform(get("/api/admin/orders/7/comprobante"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition", Matchers.containsString("comprobante_7.pdf")))
+                .andExpect(content().bytes(pdf));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void should_return_422_when_comprobante_not_available_for_state() throws Exception {
+        when(comprobanteService.generarComprobanteAdmin(2L))
+                .thenThrow(new ComprobanteNoDisponibleException(
+                        "El pedido 2 no tiene comprobante en estado PENDIENTE"));
+
+        mvc.perform(get("/api/admin/orders/2/comprobante"))
+                .andExpect(status().isUnprocessableEntity());
+    }
 }

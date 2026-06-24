@@ -3,8 +3,10 @@ package pe.com.krypton.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import pe.com.krypton.dto.response.OrderResponse;
+import pe.com.krypton.exception.ComprobanteNoDisponibleException;
 import pe.com.krypton.exception.ResourceNotFoundException;
 import pe.com.krypton.model.User;
+import pe.com.krypton.model.enums.OrderStatus;
 import pe.com.krypton.report.PdfExporter;
 import pe.com.krypton.repository.UserRepository;
 import pe.com.krypton.service.AdminOrderService;
@@ -30,6 +32,17 @@ public class ComprobanteServiceImpl implements ComprobanteService {
         OrderResponse order = adminOrderService.getOrder(orderId);
         if (!user.getId().equals(order.userId())) {
             throw new ResourceNotFoundException("Pedido no encontrado: " + orderId);
+        }
+        return pdfExporter.exportComprobante(order);
+    }
+
+    @Override
+    public byte[] generarComprobanteAdmin(Long orderId) {
+        OrderResponse order = adminOrderService.getOrder(orderId);
+        OrderStatus status = OrderStatus.valueOf(order.status());
+        if (status == OrderStatus.PENDIENTE || status == OrderStatus.CANCELADA) {
+            throw new ComprobanteNoDisponibleException(
+                    "El pedido " + orderId + " no tiene comprobante en estado " + status);
         }
         return pdfExporter.exportComprobante(order);
     }

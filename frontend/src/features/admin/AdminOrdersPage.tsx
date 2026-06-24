@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Eye } from 'lucide-react';
-import { getAllOrders } from './admin-orders.api';
+import { Eye, FileText } from 'lucide-react';
+import { downloadComprobanteAdmin, getAllOrders } from './admin-orders.api';
 import { AdminOrderDetailModal } from './AdminOrderDetailModal';
 import type { OrderResponse, OrderStatus } from '../../models/order';
 import './admin.css';
@@ -10,6 +10,9 @@ const dateFmt = new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium', timeStyl
 const STATUS_LABEL: Record<OrderStatus, string> = { PENDIENTE: 'Pendiente', CONFIRMADA: 'Confirmada', ENVIADO: 'Enviado', ENTREGADO: 'Entregado', CANCELADA: 'Cancelada' };
 const PAGE_SIZE = 10;
 
+/** El comprobante solo existe para pedidos pagados (no PENDIENTE/CANCELADA). */
+const isPagado = (s: OrderStatus) => s === 'CONFIRMADA' || s === 'ENVIADO' || s === 'ENTREGADO';
+
 /** Sección de pedidos del panel admin: lista paginada + detalle con cambio de estado. */
 export function AdminOrdersPage() {
   const [orders, setOrders] = useState<OrderResponse[]>([]);
@@ -18,7 +21,17 @@ export function AdminOrdersPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [dlError, setDlError] = useState(false);
   const [selected, setSelected] = useState<OrderResponse | null>(null);
+
+  const descargarComprobante = async (id: number) => {
+    setDlError(false);
+    try {
+      await downloadComprobanteAdmin(id);
+    } catch {
+      setDlError(true);
+    }
+  };
 
   // Filtros: estado + rango de fecha (el backend usa OrderSpecification).
   const [statusFilter, setStatusFilter] = useState<OrderStatus | ''>('');
@@ -69,6 +82,7 @@ export function AdminOrdersPage() {
       </div>
 
       {error && <p className="adm-alert">No se pudieron cargar los pedidos.</p>}
+      {dlError && <p className="adm-alert">No se pudo descargar el comprobante.</p>}
 
       <div className="adm-tablewrap">
         <table className="adm-table">
@@ -86,6 +100,9 @@ export function AdminOrdersPage() {
                 <td>{pen.format(o.total)}</td>
                 <td className="adm-actions">
                   <button type="button" title="Ver detalle" onClick={() => setSelected(o)}><Eye size={17} /></button>
+                  {isPagado(o.status) && (
+                    <button type="button" title="Descargar comprobante" onClick={() => descargarComprobante(o.id)}><FileText size={17} /></button>
+                  )}
                 </td>
               </tr>
             ))}

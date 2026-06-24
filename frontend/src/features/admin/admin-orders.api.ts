@@ -33,3 +33,16 @@ export async function updateOrderStatus(id: number, status: OrderStatus): Promis
   const { data } = await api.put<OrderResponse>(`/api/admin/orders/${id}/status`, { status });
   return data;
 }
+
+/** GET /api/admin/orders/{id}/comprobante — descarga el PDF (solo pedidos pagados; 422 si no). */
+export async function downloadComprobanteAdmin(id: number): Promise<void> {
+  const res = await api.get(`/api/admin/orders/${id}/comprobante`, { responseType: 'blob' });
+  const url = URL.createObjectURL(res.data as Blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `comprobante_${id}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}

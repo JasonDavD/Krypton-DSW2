@@ -3,6 +3,10 @@ package pe.com.krypton.controller;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -15,6 +19,7 @@ import pe.com.krypton.dto.response.OrderResponse;
 import pe.com.krypton.dto.response.PageResponse;
 import pe.com.krypton.model.enums.OrderStatus;
 import pe.com.krypton.service.AdminOrderService;
+import pe.com.krypton.service.ComprobanteService;
 
 /**
  * Admin order management endpoints.
@@ -29,6 +34,7 @@ import pe.com.krypton.service.AdminOrderService;
 public class AdminOrderController {
 
     private final AdminOrderService adminOrderService;
+    private final ComprobanteService comprobanteService;
 
     /**
      * GET /api/admin/orders → 200 PageResponse<OrderResponse> (paginado).
@@ -56,5 +62,21 @@ public class AdminOrderController {
     public OrderResponse updateStatus(@PathVariable Long id,
                                       @Valid @RequestBody OrderStatusUpdateRequest request) {
         return adminOrderService.updateStatus(id, request.status());
+    }
+
+    /**
+     * GET /api/admin/orders/{id}/comprobante → 200 PDF (attachment) de la boleta/factura.
+     * Solo pedidos pagados (CONFIRMADA/ENVIADO/ENTREGADO); 422 si está PENDIENTE o CANCELADA; 404 si no existe.
+     */
+    @GetMapping(value = "/{id}/comprobante", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> comprobante(@PathVariable Long id) {
+        byte[] pdf = comprobanteService.generarComprobanteAdmin(id);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(
+                ContentDisposition.attachment().filename("comprobante_" + id + ".pdf").build());
+        headers.setContentLength(pdf.length);
+        return ResponseEntity.ok().headers(headers).body(pdf);
     }
 }

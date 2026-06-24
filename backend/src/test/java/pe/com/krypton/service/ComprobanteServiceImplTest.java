@@ -17,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pe.com.krypton.dto.response.OrderResponse;
+import pe.com.krypton.exception.ComprobanteNoDisponibleException;
 import pe.com.krypton.exception.ResourceNotFoundException;
 import pe.com.krypton.model.User;
 import pe.com.krypton.report.PdfExporter;
@@ -76,5 +77,41 @@ class ComprobanteServiceImplTest {
 
         assertThatThrownBy(() -> service.generarComprobante("x@k.pe", 1L))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    // ─── admin: sin ownership, solo pedidos pagados ────────────────────────────────
+
+    @Test
+    void admin_generates_pdf_for_confirmada_without_ownership_check() {
+        when(adminOrderService.getOrder(1L)).thenReturn(orderWithStatus("CONFIRMADA"));
+        when(pdfExporter.exportComprobante(any())).thenReturn(new byte[]{ 0x25, 0x50, 0x44, 0x46 });
+
+        byte[] pdf = service.generarComprobanteAdmin(1L);
+
+        assertThat(pdf).containsExactly(0x25, 0x50, 0x44, 0x46);
+    }
+
+    @Test
+    void admin_throws_when_order_pendiente() {
+        when(adminOrderService.getOrder(1L)).thenReturn(orderWithStatus("PENDIENTE"));
+
+        assertThatThrownBy(() -> service.generarComprobanteAdmin(1L))
+                .isInstanceOf(ComprobanteNoDisponibleException.class);
+        verify(pdfExporter, never()).exportComprobante(any());
+    }
+
+    @Test
+    void admin_throws_when_order_cancelada() {
+        when(adminOrderService.getOrder(1L)).thenReturn(orderWithStatus("CANCELADA"));
+
+        assertThatThrownBy(() -> service.generarComprobanteAdmin(1L))
+                .isInstanceOf(ComprobanteNoDisponibleException.class);
+        verify(pdfExporter, never()).exportComprobante(any());
+    }
+
+    private OrderResponse orderWithStatus(String status) {
+        return new OrderResponse(1L, 10L, Instant.now(), status,
+                "BOLETA", "Cliente", "12345678",
+                BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.TEN, List.of());
     }
 }

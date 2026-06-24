@@ -13,4 +13,15 @@ public interface ComprobanteService {
      *         pedido no existe o no pertenece al usuario (IDOR → 404, sin filtrar existencia ajena)
      */
     byte[] generarComprobante(String email, Long orderId);
+
+    /**
+     * PDF del comprobante de CUALQUIER pedido, para el ADMIN (sin chequeo de ownership).
+     * Solo los pedidos pagados (CONFIRMADA, ENVIADO, ENTREGADO) tienen comprobante.
+     *
+     * @param orderId id del pedido (vive en pedidos-service)
+     * @return bytes del PDF
+     * @throws pe.com.krypton.exception.ComprobanteNoDisponibleException si el pedido está PENDIENTE
+     *         o CANCELADA (422 — no hay comprobante para un pedido sin pagar o anulado)
+     */
+    byte[] generarComprobanteAdmin(Long orderId);
 }

@@ -11,7 +11,7 @@ export type DocumentType = 'BOLETA' | 'FACTURA';
 export type OrderStatus = 'PENDIENTE' | 'CONFIRMADA' | 'ENVIADO' | 'ENTREGADO' | 'CANCELADA';
 
 /** Método de pago (refleja el enum PaymentMethod del backend). */
-export type PaymentMethod = 'CREDIT_CARD' | 'YAPE' | 'EFECTIVO';
+export type PaymentMethod = 'YAPE' | 'CREDIT_CARD' | 'DEBIT_CARD';
 
 /** Línea del pedido. unitPrice es el snapshot congelado al hacer checkout. */
 export interface OrderItemResponse {

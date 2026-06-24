@@ -38,6 +38,15 @@
 .od-methods { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
 .od-method { height: 44px; border: 1.5px solid var(--border-subtle); border-radius: 11px; background: #fff; font-family: var(--font-sans); font-weight: 600; font-size: 14px; color: var(--text-body); cursor: pointer; transition: border-color 140ms ease, background 140ms ease; }
 .od-method--on { border-color: var(--kr-navy-800); background: var(--kr-gray-50); color: var(--kr-navy-800); font-weight: 700; }
+
+/* formulario de pago simulado */
+.od-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.od-field { display: flex; flex-direction: column; gap: 6px; }
+.od-field span { font-size: 12.5px; font-weight: 600; color: var(--text-muted); }
+.od-field input { height: 42px; padding: 0 12px; border: 1.5px solid var(--border-subtle); border-radius: 10px; font-family: var(--font-sans); font-size: 14px; color: var(--text-strong); background: #fff; transition: border-color 140ms ease; }
+.od-field input:focus { outline: none; border-color: var(--kr-navy-800); }
+.od-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.od-hint { font-size: 12px; color: var(--text-faint); margin: 2px 0 0; line-height: 1.4; }
 .od-pay__btn { width: 100%; height: 50px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: none; border-radius: 12px; background: var(--kr-orange-500); color: #fff; font-family: var(--font-sans); font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: 0 12px 26px -10px rgba(243, 116, 2, 0.6); transition: filter 120ms ease; }
 .od-pay__btn:hover:not(:disabled) { filter: brightness(0.96); }
 .od-pay__btn:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }

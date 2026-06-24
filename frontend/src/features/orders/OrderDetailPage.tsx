@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Check, CreditCard } from 'lucide-react';
+import { Check, CreditCard, Smartphone } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
 import { getMyOrder, payOrder } from './orders.api';
 import type { OrderResponse, OrderStatus, PaymentMethod } from '../../models/order';
@@ -17,8 +17,40 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
 const PAY_METHODS: { value: PaymentMethod; label: string }[] = [
   { value: 'YAPE', label: 'Yape' },
   { value: 'CREDIT_CARD', label: 'Tarjeta de crédito' },
-  { value: 'EFECTIVO', label: 'Efectivo' },
+  { value: 'DEBIT_CARD', label: 'Tarjeta de débito' },
 ];
+
+const isCard = (m: PaymentMethod) => m === 'CREDIT_CARD' || m === 'DEBIT_CARD';
+
+const onlyDigits = (s: string) => s.replace(/\D/g, '');
+const groupCard = (s: string) => onlyDigits(s).slice(0, 16).replace(/(.{4})/g, '$1 ').trim();
+const groupExpiry = (s: string) => {
+  const d = onlyDigits(s).slice(0, 4);
+  return d.length <= 2 ? d : `${d.slice(0, 2)}/${d.slice(2)}`;
+};
+
+interface CardForm { number: string; name: string; expiry: string; cvv: string }
+interface YapeForm { phone: string; code: string }
+
+/** Simulación: valida formato de tarjeta (16 díg, titular, MM/AA no vencida, CVV). */
+function cardValid(c: CardForm): boolean {
+  if (onlyDigits(c.number).length !== 16) return false;
+  if (c.name.trim().length < 3) return false;
+  const m = c.expiry.match(/^(\d{2})\/(\d{2})$/);
+  if (!m) return false;
+  const mm = Number(m[1]);
+  if (mm < 1 || mm > 12) return false;
+  const now = new Date();
+  const curYM = now.getFullYear() * 100 + (now.getMonth() + 1);
+  const expYM = (2000 + Number(m[2])) * 100 + mm;
+  if (expYM < curYM) return false;
+  return onlyDigits(c.cvv).length === 3;
+}
+
+/** Simulación: celular Yape (9 díg, empieza en 9) + código de aprobación de 6 díg. */
+function yapeValid(y: YapeForm): boolean {
+  return /^9\d{8}$/.test(onlyDigits(y.phone)) && onlyDigits(y.code).length === 6;
+}
 
 /** Detalle de un pedido: comprobante, líneas, desglose de montos y pago si está pendiente. */
 export function OrderDetailPage() {
@@ -29,6 +61,8 @@ export function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [method, setMethod] = useState<PaymentMethod>('YAPE');
+  const [card, setCard] = useState<CardForm>({ number: '', name: '', expiry: '', cvv: '' });
+  const [yape, setYape] = useState<YapeForm>({ phone: '', code: '' });
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,6 +75,11 @@ export function OrderDetailPage() {
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [id, isAuthenticated]);
+
+  const formValid = useMemo(
+    () => (isCard(method) ? cardValid(card) : yapeValid(yape)),
+    [method, card, yape],
+  );
 
   if (!isAuthenticated) {
     return <div className="ord ord-gate"><h1>Iniciá sesión para ver el pedido</h1>
@@ -61,6 +100,7 @@ export function OrderDetailPage() {
   const isFactura = order.documentType === 'FACTURA';
 
   const pay = async () => {
+    if (!formValid) return;
     setPaying(true);
     setError(null);
     try {
@@ -142,8 +182,51 @@ export function OrderDetailPage() {
                   </button>
                 ))}
               </div>
-              <button type="button" className="od-pay__btn" onClick={pay} disabled={paying}>
-                <CreditCard size={18} /> {paying ? 'Procesando…' : `Pagar ${pen.format(order.total)}`}
+
+              {isCard(method) ? (
+                <div className="od-form">
+                  <label className="od-field">
+                    <span>Número de tarjeta</span>
+                    <input inputMode="numeric" autoComplete="cc-number" placeholder="0000 0000 0000 0000"
+                      value={card.number} onChange={(e) => setCard({ ...card, number: groupCard(e.target.value) })} />
+                  </label>
+                  <label className="od-field">
+                    <span>Titular</span>
+                    <input autoComplete="cc-name" placeholder="Como figura en la tarjeta"
+                      value={card.name} onChange={(e) => setCard({ ...card, name: e.target.value })} />
+                  </label>
+                  <div className="od-field-row">
+                    <label className="od-field">
+                      <span>Vencimiento</span>
+                      <input inputMode="numeric" placeholder="MM/AA"
+                        value={card.expiry} onChange={(e) => setCard({ ...card, expiry: groupExpiry(e.target.value) })} />
+                    </label>
+                    <label className="od-field">
+                      <span>CVV</span>
+                      <input inputMode="numeric" type="password" placeholder="123"
+                        value={card.cvv} onChange={(e) => setCard({ ...card, cvv: onlyDigits(e.target.value).slice(0, 3) })} />
+                    </label>
+                  </div>
+                </div>
+              ) : (
+                <div className="od-form">
+                  <label className="od-field">
+                    <span>Celular Yape</span>
+                    <input inputMode="numeric" placeholder="9XXXXXXXX"
+                      value={yape.phone} onChange={(e) => setYape({ ...yape, phone: onlyDigits(e.target.value).slice(0, 9) })} />
+                  </label>
+                  <label className="od-field">
+                    <span>Código de aprobación</span>
+                    <input inputMode="numeric" placeholder="6 dígitos"
+                      value={yape.code} onChange={(e) => setYape({ ...yape, code: onlyDigits(e.target.value).slice(0, 6) })} />
+                  </label>
+                  <p className="od-hint">Abrí tu app de Yape, confirmá el pago y copiá el código de aprobación.</p>
+                </div>
+              )}
+
+              <button type="button" className="od-pay__btn" onClick={pay} disabled={paying || !formValid}>
+                {isCard(method) ? <CreditCard size={18} /> : <Smartphone size={18} />}
+                {paying ? 'Procesando…' : `Pagar ${pen.format(order.total)}`}
               </button>
             </div>
           )}

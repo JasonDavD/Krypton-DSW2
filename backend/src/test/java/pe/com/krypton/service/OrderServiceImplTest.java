@@ -504,7 +504,7 @@ class OrderServiceImplTest {
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(u));
         when(orderRepository.findByIdAndUser(7L, u)).thenReturn(Optional.of(o));
 
-        assertThatThrownBy(() -> service.pay(email, 7L, new PaymentRequest(PaymentMethod.EFECTIVO)))
+        assertThatThrownBy(() -> service.pay(email, 7L, new PaymentRequest(PaymentMethod.DEBIT_CARD)))
                 .isInstanceOf(OrderStatusTransitionException.class);
     }
 

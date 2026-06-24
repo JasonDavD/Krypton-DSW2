@@ -30,10 +30,21 @@ spring:
           uri: lb://CATALOGO            # lb:// = balanceo via Eureka, NUNCA URL fija
           predicates:
             - Path=/api/products/**
+          filters:
+            # Si catalogo esta caido/lento, el circuito forwardea al fallback (503 limpio).
+            - name: CircuitBreaker
+              args:
+                name: catalogoCb
+                fallbackUri: forward:/fallback/catalogo
         - id: pedidos
           uri: lb://PEDIDOS
           predicates:
             - Path=/api/orders/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: pedidosCb
+                fallbackUri: forward:/fallback/pedidos
         # El monolito NO esta registrado en Eureka -> URI fija (parametrizable para Docker).
         - id: monolito
           uri: ${MONOLITH_URI:http://localhost:8080}
@@ -51,3 +62,19 @@ eureka:
 app:
   jwt:
     secret: ${JWT_SECRET:dev-only-change-me-krypton-secret-key-1234567890}
+
+# Circuit breaker (Resilience4j reactivo) de las rutas. timelimiter = corta a los 4s si el
+# micro no responde; la ventana chica abre el circuito con pocas fallas -> fail-fast al fallback.
+resilience4j:
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 4s
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 6
+        minimumNumberOfCalls: 3
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 2

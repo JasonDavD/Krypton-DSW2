@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { isAxiosError } from 'axios';
 import { Link, useParams } from 'react-router-dom';
-import { Check, CreditCard, Download, Smartphone } from 'lucide-react';
+import { Check, Clock, CreditCard, Download, PackageCheck, Smartphone, Truck, XCircle } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
 import { downloadComprobante, getMyOrder, payOrder } from './orders.api';
 import type { OrderResponse, OrderStatus, PaymentMethod } from '../../models/order';
@@ -15,6 +15,44 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   PENDIENTE: 'Pendiente de pago', CONFIRMADA: 'Confirmada',
   ENVIADO: 'Enviado', ENTREGADO: 'Entregado', CANCELADA: 'Cancelada',
 };
+
+// Línea de tiempo del pedido: avance PENDIENTE → CONFIRMADA → ENVIADO → ENTREGADO.
+const TIMELINE_STEPS = [
+  { key: 'PENDIENTE', label: 'Pedido creado', icon: Clock },
+  { key: 'CONFIRMADA', label: 'Pago confirmado', icon: CreditCard },
+  { key: 'ENVIADO', label: 'Enviado', icon: Truck },
+  { key: 'ENTREGADO', label: 'Entregado', icon: PackageCheck },
+] as const;
+
+/** Stepper visual del estado del pedido. CANCELADA es un estado terminal fuera del avance. */
+function OrderTimeline({ status }: { status: OrderStatus }) {
+  if (status === 'CANCELADA') {
+    return (
+      <div className="od-timeline od-timeline--cancel" role="status">
+        <XCircle size={22} />
+        <div>
+          <strong>Pedido cancelado</strong>
+          <span>El pedido fue cancelado y el stock devuelto al inventario.</span>
+        </div>
+      </div>
+    );
+  }
+  const currentIdx = TIMELINE_STEPS.findIndex((s) => s.key === status);
+  return (
+    <ol className="od-timeline" aria-label="Estado del pedido">
+      {TIMELINE_STEPS.map((step, i) => {
+        const state = i < currentIdx ? 'done' : i === currentIdx ? 'current' : 'todo';
+        const Icon = step.icon;
+        return (
+          <li key={step.key} className={`od-step od-step--${state}`}>
+            <span className="od-step__dot">{state === 'done' ? <Check size={18} /> : <Icon size={18} />}</span>
+            <span className="od-step__label">{step.label}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
 const PAY_METHODS: { value: PaymentMethod; label: string }[] = [
   { value: 'YAPE', label: 'Yape' },
   { value: 'CREDIT_CARD', label: 'Tarjeta de crédito' },
@@ -153,6 +191,8 @@ export function OrderDetailPage() {
         </div>
         <span className={`ord-badge ord-badge--${order.status.toLowerCase()}`}>{STATUS_LABEL[order.status]}</span>
       </header>
+
+      <OrderTimeline status={order.status} />
 
       <div className="od-grid">
         <section className="od-main">

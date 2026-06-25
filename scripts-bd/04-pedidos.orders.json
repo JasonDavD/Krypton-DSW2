@@ -1,0 +1,607 @@
+[{
+	"_id": 1,
+	"userId": 1,
+	"orderDate": {
+		"$date": "2026-06-22T17:30:19.455Z"
+	},
+	"status": "CONFIRMADA",
+	"documentType": "BOLETA",
+	"customerName": "Cliente Demo",
+	"customerDoc": "12345678",
+	"subtotal": "8947.90",
+	"shippingCost": "0",
+	"igv": "1364.93",
+	"total": "8947.90",
+	"items": [
+		{
+			"productId": 1,
+			"productName": "Laptop Krypton Vortex 15",
+			"quantity": 2,
+			"unitPrice": "4299.00"
+		},
+		{
+			"productId": 3,
+			"productName": "Audifonos Krypton Pulse X",
+			"quantity": 1,
+			"unitPrice": "349.90"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 2,
+	"userId": 1,
+	"orderDate": {
+		"$date": "2026-06-22T17:31:08.306Z"
+	},
+	"status": "PENDIENTE",
+	"documentType": "BOLETA",
+	"customerName": "Cliente Demo",
+	"customerDoc": "12345678",
+	"subtotal": "8598.00",
+	"shippingCost": "0",
+	"igv": "1311.56",
+	"total": "8598.00",
+	"items": [
+		{
+			"productId": 1,
+			"productName": "Laptop Krypton Vortex 15",
+			"quantity": 2,
+			"unitPrice": "4299.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 3,
+	"userId": 1,
+	"orderDate": {
+		"$date": "2026-06-22T18:38:39.163Z"
+	},
+	"status": "PENDIENTE",
+	"documentType": "BOLETA",
+	"customerName": "Admin Krypton",
+	"customerDoc": "12345678",
+	"subtotal": "2799.00",
+	"shippingCost": "0",
+	"igv": "426.97",
+	"total": "2799.00",
+	"items": [
+		{
+			"productId": 2,
+			"productName": "Laptop Krypton Air 14",
+			"quantity": 1,
+			"unitPrice": "2799.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 4,
+	"userId": 2,
+	"orderDate": {
+		"$date": "2026-06-22T23:07:49.485Z"
+	},
+	"status": "CONFIRMADA",
+	"documentType": "BOLETA",
+	"customerName": "Jose Miguel",
+	"customerDoc": "65859988",
+	"subtotal": "2799.00",
+	"shippingCost": "0",
+	"igv": "426.97",
+	"total": "2799.00",
+	"items": [
+		{
+			"productId": 2,
+			"productName": "Laptop Krypton Air 14",
+			"quantity": 1,
+			"unitPrice": "2799.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 5,
+	"userId": 2,
+	"orderDate": {
+		"$date": "2026-06-22T23:09:31.386Z"
+	},
+	"status": "CONFIRMADA",
+	"documentType": "BOLETA",
+	"customerName": "Jose",
+	"customerDoc": "21345678",
+	"subtotal": "2799.00",
+	"shippingCost": "0",
+	"igv": "426.97",
+	"total": "2799.00",
+	"items": [
+		{
+			"productId": 2,
+			"productName": "Laptop Krypton Air 14",
+			"quantity": 1,
+			"unitPrice": "2799.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 6,
+	"userId": 7,
+	"orderDate": {
+		"$date": "2026-06-24T04:48:36.668Z"
+	},
+	"status": "CONFIRMADA",
+	"documentType": "BOLETA",
+	"customerName": "E2E Cliente",
+	"customerDoc": "12345678",
+	"subtotal": "4299.00",
+	"shippingCost": "0",
+	"igv": "655.78",
+	"total": "4299.00",
+	"items": [
+		{
+			"productId": 1,
+			"productName": "Laptop Krypton Vortex 15",
+			"quantity": 1,
+			"unitPrice": "4299.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 7,
+	"userId": 8,
+	"orderDate": {
+		"$date": "2026-06-24T05:18:18.219Z"
+	},
+	"status": "CONFIRMADA",
+	"documentType": "BOLETA",
+	"customerName": "E2E Cliente",
+	"customerDoc": "12345678",
+	"subtotal": "4299.00",
+	"shippingCost": "0",
+	"igv": "655.78",
+	"total": "4299.00",
+	"items": [
+		{
+			"productId": 1,
+			"productName": "Laptop Krypton Vortex 15",
+			"quantity": 1,
+			"unitPrice": "4299.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 8,
+	"userId": 13,
+	"orderDate": {
+		"$date": "2026-06-24T15:44:54.809Z"
+	},
+	"status": "PENDIENTE",
+	"documentType": "BOLETA",
+	"customerName": "Stock Test",
+	"customerDoc": "12345678",
+	"subtotal": "4299.00",
+	"shippingCost": "0",
+	"igv": "655.78",
+	"total": "4299.00",
+	"items": [
+		{
+			"productId": 1,
+			"productName": "Laptop Krypton Vortex 15",
+			"quantity": 1,
+			"unitPrice": "4299.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 9,
+	"userId": 14,
+	"orderDate": {
+		"$date": "2026-06-24T15:45:38.209Z"
+	},
+	"status": "PENDIENTE",
+	"documentType": "BOLETA",
+	"customerName": "SS",
+	"customerDoc": "12345678",
+	"subtotal": "4299.00",
+	"shippingCost": "0",
+	"igv": "655.78",
+	"total": "4299.00",
+	"items": [
+		{
+			"productId": 1,
+			"productName": "Laptop Krypton Vortex 15",
+			"quantity": 1,
+			"unitPrice": "4299.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 10,
+	"userId": 9,
+	"orderDate": {
+		"$date": "2026-06-24T15:50:43.878Z"
+	},
+	"status": "ENVIADO",
+	"documentType": "FACTURA",
+	"customerName": "Joel Curi",
+	"customerDoc": "45645645456",
+	"subtotal": "4299.00",
+	"shippingCost": "0",
+	"igv": "655.78",
+	"total": "4299.00",
+	"items": [
+		{
+			"productId": 1,
+			"productName": "Laptop Krypton Vortex 15",
+			"quantity": 1,
+			"unitPrice": "4299.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 11,
+	"userId": 17,
+	"orderDate": {
+		"$date": "2026-06-24T16:04:00.705Z"
+	},
+	"status": "CONFIRMADA",
+	"documentType": "BOLETA",
+	"customerName": "Cmp",
+	"customerDoc": "12345678",
+	"subtotal": "4299.00",
+	"shippingCost": "0",
+	"igv": "655.78",
+	"total": "4299.00",
+	"items": [
+		{
+			"productId": 1,
+			"productName": "Laptop Krypton Vortex 15",
+			"quantity": 1,
+			"unitPrice": "4299.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 12,
+	"userId": 9,
+	"orderDate": {
+		"$date": "2026-06-24T16:15:53.558Z"
+	},
+	"status": "CONFIRMADA",
+	"documentType": "FACTURA",
+	"customerName": "CURI SAC",
+	"customerDoc": "12312645454",
+	"subtotal": "349.90",
+	"shippingCost": "0",
+	"igv": "53.37",
+	"total": "349.90",
+	"items": [
+		{
+			"productId": 3,
+			"productName": "Audifonos Krypton Pulse X",
+			"quantity": 1,
+			"unitPrice": "349.90"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 13,
+	"userId": 1,
+	"orderDate": {
+		"$date": "2026-06-24T16:17:39.78Z"
+	},
+	"status": "PENDIENTE",
+	"documentType": "BOLETA",
+	"customerName": "dasd",
+	"customerDoc": "21323121",
+	"subtotal": "4299.00",
+	"shippingCost": "0",
+	"igv": "655.78",
+	"total": "4299.00",
+	"items": [
+		{
+			"productId": 1,
+			"productName": "Laptop Krypton Vortex 15",
+			"quantity": 1,
+			"unitPrice": "4299.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 14,
+	"userId": 18,
+	"orderDate": {
+		"$date": "2026-06-24T16:22:02.071Z"
+	},
+	"status": "PENDIENTE",
+	"documentType": "BOLETA",
+	"customerName": "Res",
+	"customerDoc": "12345678",
+	"subtotal": "4299.00",
+	"shippingCost": "0",
+	"igv": "655.78",
+	"total": "4299.00",
+	"items": [
+		{
+			"productId": 1,
+			"productName": "Laptop Krypton Vortex 15",
+			"quantity": 1,
+			"unitPrice": "4299.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 15,
+	"userId": 18,
+	"orderDate": {
+		"$date": "2026-06-24T16:23:54.999Z"
+	},
+	"status": "PENDIENTE",
+	"documentType": "BOLETA",
+	"customerName": "Res",
+	"customerDoc": "12345678",
+	"subtotal": "4299.00",
+	"shippingCost": "0",
+	"igv": "655.78",
+	"total": "4299.00",
+	"items": [
+		{
+			"productId": 1,
+			"productName": "Laptop Krypton Vortex 15",
+			"quantity": 1,
+			"unitPrice": "4299.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 16,
+	"userId": 19,
+	"orderDate": {
+		"$date": "2026-06-24T16:25:56.63Z"
+	},
+	"status": "PENDIENTE",
+	"documentType": "BOLETA",
+	"customerName": "BD",
+	"customerDoc": "12345678",
+	"subtotal": "4299.00",
+	"shippingCost": "0",
+	"igv": "655.78",
+	"total": "4299.00",
+	"items": [
+		{
+			"productId": 1,
+			"productName": "Laptop Krypton Vortex 15",
+			"quantity": 1,
+			"unitPrice": "4299.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 17,
+	"userId": 9,
+	"orderDate": {
+		"$date": "2026-06-24T17:45:08.567Z"
+	},
+	"status": "ENVIADO",
+	"documentType": "BOLETA",
+	"customerName": "Joel Curi",
+	"customerDoc": "12345645",
+	"subtotal": "4299.00",
+	"shippingCost": "0",
+	"igv": "655.78",
+	"total": "4299.00",
+	"items": [
+		{
+			"productId": 1,
+			"productName": "Laptop Krypton Vortex 15",
+			"quantity": 1,
+			"unitPrice": "4299.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 18,
+	"userId": 21,
+	"orderDate": {
+		"$date": "2026-06-24T20:19:34.463Z"
+	},
+	"status": "CANCELADA",
+	"documentType": "BOLETA",
+	"customerName": "Rev",
+	"customerDoc": "12345678",
+	"subtotal": "4299.00",
+	"shippingCost": "0",
+	"igv": "655.78",
+	"total": "4299.00",
+	"items": [
+		{
+			"productId": 1,
+			"productName": "Laptop Krypton Vortex 15",
+			"quantity": 1,
+			"unitPrice": "4299.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 19,
+	"userId": 22,
+	"orderDate": {
+		"$date": "2026-06-24T20:20:32.916Z"
+	},
+	"status": "CANCELADA",
+	"documentType": "BOLETA",
+	"customerName": "R",
+	"customerDoc": "12345678",
+	"subtotal": "4299.00",
+	"shippingCost": "0",
+	"igv": "655.78",
+	"total": "4299.00",
+	"items": [
+		{
+			"productId": 1,
+			"productName": "Laptop Krypton Vortex 15",
+			"quantity": 1,
+			"unitPrice": "4299.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 20,
+	"userId": 23,
+	"orderDate": {
+		"$date": "2026-06-24T20:21:30.855Z"
+	},
+	"status": "CANCELADA",
+	"documentType": "BOLETA",
+	"customerName": "R",
+	"customerDoc": "12345678",
+	"subtotal": "4299.00",
+	"shippingCost": "0",
+	"igv": "655.78",
+	"total": "4299.00",
+	"items": [
+		{
+			"productId": 1,
+			"productName": "Laptop Krypton Vortex 15",
+			"quantity": 1,
+			"unitPrice": "4299.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 21,
+	"userId": 24,
+	"orderDate": {
+		"$date": "2026-06-24T20:33:30.699Z"
+	},
+	"status": "CONFIRMADA",
+	"documentType": "BOLETA",
+	"customerName": "Ensayo Cliente",
+	"customerDoc": "12345678",
+	"subtotal": "4299.00",
+	"shippingCost": "0",
+	"igv": "655.78",
+	"total": "4299.00",
+	"items": [
+		{
+			"productId": 1,
+			"productName": "Laptop Krypton Vortex 15",
+			"quantity": 1,
+			"unitPrice": "4299.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 22,
+	"userId": 25,
+	"orderDate": {
+		"$date": "2026-06-24T22:21:20.685Z"
+	},
+	"status": "CONFIRMADA",
+	"documentType": "BOLETA",
+	"customerName": "Rep",
+	"customerDoc": "12345678",
+	"subtotal": "4299.00",
+	"shippingCost": "0",
+	"igv": "655.78",
+	"total": "4299.00",
+	"items": [
+		{
+			"productId": 1,
+			"productName": "Laptop Krypton Vortex 15",
+			"quantity": 1,
+			"unitPrice": "4299.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 23,
+	"userId": 26,
+	"orderDate": {
+		"$date": "2026-06-24T22:24:03.677Z"
+	},
+	"status": "PENDIENTE",
+	"documentType": "BOLETA",
+	"customerName": "P",
+	"customerDoc": "12345678",
+	"subtotal": "2799.00",
+	"shippingCost": "0",
+	"igv": "426.97",
+	"total": "2799.00",
+	"items": [
+		{
+			"productId": 2,
+			"productName": "Laptop Krypton Air 14",
+			"quantity": 1,
+			"unitPrice": "2799.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 24,
+	"userId": 28,
+	"orderDate": {
+		"$date": "2026-06-24T22:39:43.194Z"
+	},
+	"status": "CONFIRMADA",
+	"documentType": "BOLETA",
+	"customerName": "E2E",
+	"customerDoc": "12345678",
+	"subtotal": "2799.00",
+	"shippingCost": "0",
+	"igv": "426.97",
+	"total": "2799.00",
+	"items": [
+		{
+			"productId": 2,
+			"productName": "Laptop Krypton Air 14",
+			"quantity": 1,
+			"unitPrice": "2799.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+},
+{
+	"_id": 25,
+	"userId": 29,
+	"orderDate": {
+		"$date": "2026-06-24T22:40:38.003Z"
+	},
+	"status": "ENTREGADO",
+	"documentType": "BOLETA",
+	"customerName": "OK",
+	"customerDoc": "12345678",
+	"subtotal": "2799.00",
+	"shippingCost": "0",
+	"igv": "426.97",
+	"total": "2799.00",
+	"items": [
+		{
+			"productId": 2,
+			"productName": "Laptop Krypton Air 14",
+			"quantity": 1,
+			"unitPrice": "2799.00"
+		}
+	],
+	"_class": "pe.com.krypton.pedidos.model.Order"
+}]
+

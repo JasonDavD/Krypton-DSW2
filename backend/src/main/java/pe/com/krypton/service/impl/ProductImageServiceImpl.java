@@ -31,8 +31,10 @@ import pe.com.krypton.service.StorageService;
  * - setCover:   demote current (flush via save) → promote target; sync imageUrl
  * - reorder:    STRICT+COMPLETE — body must match product's exact ID set; update displayOrder
  *
- * Cada vez que cambia product.imageUrl (la portada) se republica el producto al
- * catalogo-service (best-effort) — si no, el storefront seguiría mostrando la portada vieja.
+ * Tras CADA mutación de la galería (subir, borrar, reordenar, cambiar portada) se republica
+ * el producto —con su galería completa— al catalogo-service (best-effort). Si no, el storefront
+ * (que lee del catálogo) mostraría una galería desactualizada: la portada vieja o sin el
+ * carrusel de varias imágenes.
  */
 @Service
 public class ProductImageServiceImpl implements ProductImageService {
@@ -119,11 +121,14 @@ public class ProductImageServiceImpl implements ProductImageService {
         image.setCover(isFirstImage);
         productImageRepository.save(image);
 
-        // 7. On first image: sync product.imageUrl (y republicar al catalogo)
+        // 7. On first image: sync product.imageUrl (la portada).
         if (isFirstImage) {
             product.setImageUrl(serveUrl(filename));
-            saveAndSync(product);
+            productRepository.save(product);
         }
+
+        // 8. La galería cambió → republicar el producto (con su galería) al catálogo.
+        catalogoSync.publish(product);
     }
 
     // ─── delete ──────────────────────────────────────────────────────────────────
@@ -135,12 +140,12 @@ public class ProductImageServiceImpl implements ProductImageService {
                 .orElseThrow(() -> new ResourceNotFoundException("Imagen no encontrada: " + imageId));
 
         long totalCount = productImageRepository.countByProductId(productId);
+        Product product = image.getProduct();
 
         if (totalCount == 1) {
             // Last image: null out product imageUrl
-            Product product = image.getProduct();
             product.setImageUrl(null);
-            saveAndSync(product);
+            productRepository.save(product);
         } else if (image.isCover()) {
             // Cover deleted with siblings: promote next by lowest displayOrder.
             // IMPORTANT: demote the cover FIRST and flush before promoting the candidate —
@@ -157,14 +162,16 @@ public class ProductImageServiceImpl implements ProductImageService {
             candidate.setCover(true);
             productImageRepository.save(candidate);
 
-            Product product = image.getProduct();
             product.setImageUrl(serveUrl(candidate.getPath()));
-            saveAndSync(product);
+            productRepository.save(product);
         }
-        // non-cover + others exist: nothing to change on product
+        // non-cover + others exist: imageUrl (portada) sin cambios
 
         storageService.delete(image.getPath());
         productImageRepository.delete(image);
+
+        // La galería cambió → republicar el producto (con su galería) al catálogo.
+        catalogoSync.publish(product);
     }
 
     // ─── reorder ─────────────────────────────────────────────────────────────────
@@ -173,7 +180,7 @@ public class ProductImageServiceImpl implements ProductImageService {
     @Transactional
     public void reorder(Long productId, List<Long> orderedIds) {
         // Strict + Complete: ordered IDs must exactly match the product's images
-        productRepository.findById(productId)
+        Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado: " + productId));
 
         List<ProductImage> existing = productImageRepository.findByProductId(productId);
@@ -194,6 +201,9 @@ public class ProductImageServiceImpl implements ProductImageService {
             img.setDisplayOrder((short) i);
             productImageRepository.save(img);
         }
+
+        // El orden de la galería cambió → republicar al catálogo.
+        catalogoSync.publish(product);
     }
 
     // ─── setCover ────────────────────────────────────────────────────────────────
@@ -228,18 +238,14 @@ public class ProductImageServiceImpl implements ProductImageService {
         target.setCover(true);
         productImageRepository.save(target);
 
-        // Sync product imageUrl (y republicar al catalogo)
+        // Sync product imageUrl (la portada) y republicar al catálogo.
         Product product = target.getProduct();
         product.setImageUrl(serveUrl(target.getPath()));
-        saveAndSync(product);
+        productRepository.save(product);
+        catalogoSync.publish(product);
     }
 
     // ─── private helpers ─────────────────────────────────────────────────────────
-
-    /** Guarda el producto y republica su estado (incluida la portada) al catalogo-service. */
-    private void saveAndSync(Product product) {
-        catalogoSync.publish(productRepository.save(product));
-    }
 
     private String serveUrl(String filename) {
         return baseUrl + "/api/uploads/images/" + filename;

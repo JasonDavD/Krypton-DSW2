@@ -70,6 +70,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/catalogo?createDatabaseIfNotExist=true
       DB_USER: krypton
       DB_PASSWORD: krypton
+      APP_UPLOADS_BASE_URL: http://localhost:8094   # las imagenes se sirven via el gateway (mismo host que la portada)
     ports:
       - "8092:8092"                 # expuesto para probar el micro DIRECTO (aislar Gateway/Eureka)
     depends_on:

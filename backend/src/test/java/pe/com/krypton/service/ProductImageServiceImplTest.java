@@ -212,9 +212,9 @@ class ProductImageServiceImplTest {
         verify(productImageRepository).save(imgCaptor.capture());
         assertThat(imgCaptor.getValue().isCover()).isFalse();
 
-        // Product.save must NOT be called (image_url not updated) → tampoco se republica.
+        // Product.save NO se llama (la portada no cambia), pero la galería SÍ cambió → se republica.
         verify(productRepository, never()).save(any());
-        verify(catalogoSync, never()).publish(any());
+        verify(catalogoSync).publish(any());
     }
 
     // ─── delete: non-cover image ──────────────────────────────────────────────────
@@ -233,6 +233,8 @@ class ProductImageServiceImplTest {
         verify(storageService).delete("uuid10.jpg");
         verify(productImageRepository).delete(img);
         verify(productRepository, never()).save(any());
+        // La portada no cambió, pero la galería sí (se quitó una imagen) → se republica.
+        verify(catalogoSync).publish(any());
     }
 
     // ─── delete: cover image with promotion ──────────────────────────────────────
@@ -367,6 +369,8 @@ class ProductImageServiceImplTest {
         ProductImage savedImg1 = saved.stream().filter(i -> i.getId().equals(10L)).findFirst().orElseThrow();
         assertThat(savedImg2.getDisplayOrder()).isEqualTo((short) 0);
         assertThat(savedImg1.getDisplayOrder()).isEqualTo((short) 1);
+        // El orden de la galería cambió → se republica al catálogo.
+        verify(catalogoSync).publish(any());
     }
 
     // ─── setCover ────────────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 package pe.com.krypton.dto.request;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /** Estado completo de un producto que el monolito empuja a catalogo-service para mantenerlo en sync. */
 public record ProductSyncRequest(
@@ -11,5 +12,6 @@ public record ProductSyncRequest(
         int stock,
         String imageUrl,
         boolean active,
-        Long categoryId) {
+        Long categoryId,
+        List<ProductImageSyncRequest> images) {
 }
